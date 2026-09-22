@@ -1,6 +1,6 @@
 # Foundation and Diagnostic Contract Roadmap
 
-Status: active; M001 closed; M002 ready for handoff
+Status: active; M001 historically closed; corrective C001 ready; M002 blocked
 
 Long-term references:
 
@@ -119,14 +119,18 @@ Schema generation belongs to M002 after the canonical type shape is proven.
 ```text
 M001 workspace + diagnostic contract
    |
+   v
+post-closure corrective C001
+   |
    +--> M002 schema artifact + compatibility fixtures
    |
    `--> transport-probe-engine M001
 ```
 
 - M001: no hard dependencies.
-- M002 hard-depends on M001.
-- Transport subsystem has a hard dependency on M001 because network results must target a stable report vocabulary.
+- Post-closure corrective C001 is dependency-ready and repairs route-redaction/contract-integrity findings discovered after M001 closure.
+- M002 hard-depends on M001 plus corrective C001 closure.
+- Transport M001 likewise hard-depends on corrective C001 so execution code does not build on a known unsafe/ambiguous contract.
 
 ## 7. Milestones
 
@@ -177,7 +181,11 @@ Generate and freeze the first explicit pre-1 JSON Schema/fixture contract from c
 
 Dependencies:
 
-M001 closed.
+M001 closed historically; corrective C001 must also close before M002 execution.
+
+Implementation plan:
+
+- `plans/implementation/foundation-diagnostic-contract/002-published-schema-and-compatibility-fixture-gate.md`
 
 Deliverable boundary:
 
@@ -259,4 +267,4 @@ The subsystem closes when the repository has a tested canonical diagnostic model
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
 | M001 Rust workspace and canonical diagnostic contract | closed | `plans/implementation/foundation-diagnostic-contract/001-rust-workspace-and-canonical-diagnostic-contract.md` | `plans/closure/foundation-diagnostic-contract/001-status.md` | — |
-| M002 published schema and compatibility fixture gate | ready | not yet written | pending `plans/closure/foundation-diagnostic-contract/002-status.md` | M001 closed; prepare the next handoff from the landed contract |
+| M002 published schema and compatibility fixture gate | blocked | `plans/implementation/foundation-diagnostic-contract/002-published-schema-and-compatibility-fixture-gate.md` | pending `plans/closure/foundation-diagnostic-contract/002-status.md` | hard: corrective C001 closure |
