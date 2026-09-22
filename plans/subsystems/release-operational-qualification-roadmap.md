@@ -193,7 +193,7 @@ The subsystem closes when users can obtain, verify, install, run, and update a s
 | M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | external workflow run evidence remains operational |
 | M002 cross-platform binary packaging | corrective required | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure: `plans/closure/release-operational-qualification/002-status.md` | packaging workflow defects; see corrective C001 |
 | M003 shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | `plans/closure/release-operational-qualification/003-status.md` | no published eggup interface |
-| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | release corrective C001 + active product correctness correctives; M003 only if updater advertised |
+| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | Release corrective C001 hosted tag evidence and Release M002 operational qualification; M003 only if updater advertised |
 
 
 ## 13. Post-closure corrective status
@@ -210,6 +210,7 @@ Current corrective authority:
 - status: ready for handoff
 
 Release M004 remains blocked until hosted tag evidence for release corrective
-C001 is recorded and active product correctness work closes. Transport C002
-is now active against Eggress 1.0.8. M003 remains independently blocked on the
-published shared `eggup` interface.
+C001 is recorded and Release M002 operational qualification is complete. The
+product correctness correctives are closed, including Transport C002 against
+Eggress 1.0.8. M003 remains independently blocked on the published shared
+`eggup` interface.

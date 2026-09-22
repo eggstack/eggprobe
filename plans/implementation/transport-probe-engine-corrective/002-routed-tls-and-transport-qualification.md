@@ -1,6 +1,6 @@
 # Transport Corrective C002 — Routed, TLS, and Transport Qualification
 
-Status: active
+Status: closed
 
 Planning baseline: `2f01ab52fb1abe0e424cd7062b6dcc39d8e5298f`; corrective C001 is closed.
 
@@ -110,3 +110,5 @@ Stop if required qualification depends on public internet, if Eggress detailed p
 ## 10. Closure evidence
 
 Create `plans/closure/transport-probe-engine-corrective/002-status.md` with topology diagrams, fixture matrix, typed error mapping, TLS cases, H3 disposition, DNS semantics, and full verification results.
+
+Closure record: `plans/closure/transport-probe-engine-corrective/002-status.md`.

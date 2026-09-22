@@ -43,7 +43,7 @@ They are not sufficient to override the corrective gates registered below.
 | Workstream | Status | Current work | Authority |
 |---|---|---|---|
 | Foundation diagnostic contract | closed corrective | C002 closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
-| Transport/probe engine | active corrective | C001 closed; C002 in implementation against Eggress 1.0.8 | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
+| Transport/probe engine | closed corrective | C001 and C002 closed against Eggress 1.0.8 | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
 | CLI/automation | closed corrective | C001 closed | `plans/subsystems/cli-automation-corrective-addendum.md` |
 | Release/packaging | active corrective | C001 conditionally closed; hosted tag evidence pending | `plans/subsystems/release-operational-qualification-corrective-addendum.md` |
 | Shared updater integration | blocked | Release M003 | no published stable `eggup` interface |
@@ -54,7 +54,7 @@ They are not sufficient to override the corrective gates registered below.
 | Workstream | Milestone | Status | Implementation plan | Handoff note |
 |---|---|---|---|---|
 | Release corrective | C001 packaging workflow correction + hosted evidence | conditionally closed | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | Hosted dispatch awaits an existing release tag; local package evidence is recorded. |
-| Transport corrective | C002 routed/TLS/transport qualification | active | `plans/implementation/transport-probe-engine-corrective/002-routed-tls-and-transport-qualification.md` | Eggress 1.0.8 provides the typed outbound diagnostics API. |
+| Transport corrective | C002 routed/TLS/transport qualification | closed | `plans/implementation/transport-probe-engine-corrective/002-routed-tls-and-transport-qualification.md` | Closure: `plans/closure/transport-probe-engine-corrective/002-status.md`. |
 
 ## Registered blocked corrective plans
 
@@ -63,7 +63,7 @@ They are not sufficient to override the corrective gates registered below.
 | Release M003 | shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | stable published `eggup` interface |
 | Release M004 | release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | release corrective C001 hosted tag evidence and Release M002 operational qualification; M003 only if updater advertised |
 
-## Corrective findings being addressed
+## Corrective findings and dispositions
 
 ### Foundation C002
 
@@ -73,6 +73,10 @@ They are not sufficient to override the corrective gates registered below.
 - corrected machine contract must move to schema 0.2 while preserving historical 0.1 artifacts.
 
 ### Transport C001/C002
+
+Closed by corrective C001 and C002 closure records. C001 fixes the policy,
+retry, deadline, and direct-error semantics; C002 qualifies typed Eggress
+provenance, TLS, routed HTTP, cancellation, and explicit DNS/H3 limitations.
 
 - strict target policy can be bypassed by direct Eggfetch HTTP because the actual dial path does not use the policy-aware resolver;
 - nonzero retry configuration is accepted but ignored;
@@ -85,9 +89,10 @@ They are not sufficient to override the corrective gates registered below.
 ### Transport C002 interface blocker (resolved)
 
 Eggress 1.0.7 collapsed `OutboundConnector::connect_tcp` failures to a string,
-so Transport C002 was blocked. Published Eggress 1.0.8 adds detailed connect
-methods and typed kind/stage/hop/protocol accessors. C002 is now active and
-uses that public API without parsing display strings or copying Eggress code.
+so Transport C002 was initially blocked. Published Eggress 1.0.8 adds detailed
+connect methods and typed kind/stage/hop/protocol accessors. C002 used that
+public API without parsing display strings or copying Eggress code and is
+closed; see `plans/closure/transport-probe-engine-corrective/002-status.md`.
 
 ### CLI C001
 
@@ -110,9 +115,8 @@ uses that public API without parsing display strings or copying Eggress code.
 1. **Foundation C002** and **Release corrective C001** may execute in parallel.
 2. After Foundation C002 closes, execute **Transport corrective C001**.
 3. After Transport C001 closes, CLI C001 may execute independently and is now
-   closed. Transport C002 is active now that Eggress 1.0.8 publishes the
-   required diagnostic seam.
-4. After Foundation/Transport/CLI/Release correctives close, execute **Release M004** without updater claims unless M003 has independently unblocked. Release C001 still needs hosted tag evidence, so M004 remains blocked.
+   closed. Transport C002 is also closed against Eggress 1.0.8.
+4. Product correctives (Foundation, Transport, CLI) are closed. Execute **Release M004** without updater claims only after Release C001 hosted tag evidence and Release M002 operational qualification are recorded; both remain gates, so M004 remains blocked.
 5. **Release M003** remains blocked until a stable shared `eggup` interface exists.
 6. Do not generate Phase 8/9 implementation plans until the platform/datagram ownership prerequisites exist.
 

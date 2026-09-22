@@ -1,6 +1,6 @@
 # Transport and Probe Engine Roadmap
 
-Status: historical M001-M006 closure retained; post-closure corrective active
+Status: historical M001-M006 closure retained; post-closure corrective closed
 
 Long-term references:
 
@@ -359,7 +359,7 @@ corrective authority is:
 
 - `plans/subsystems/transport-probe-engine-corrective-addendum.md`
 - C001 policy/deadline/retry/error semantics — closed
-- C002 routed/TLS/transport qualification — active; detailed Eggress errors are available in 1.0.8
+- C002 routed/TLS/transport qualification — closed; detailed Eggress errors and local routed/TLS fixtures are qualified against 1.0.8
 
-Release qualification must not rely on the historical transport closure state
-until both corrective milestones close.
+Release qualification must use the C001/C002 corrective closure records rather
+than relying on historical transport closure state alone.

@@ -1,6 +1,6 @@
 # Transport and Probe Engine — Post-Closure Corrective Addendum
 
-Status: active; C001 closed; C002 unblocked by Eggress 1.0.8 typed failure provenance
+Status: closed corrective; C001 and C002 closed
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -74,3 +74,5 @@ facts without parsing display strings or copying sibling routing internals.
 ## 5. Completion definition
 
 The corrective workstream closes only when strict target policy applies to the actual connection path, unsupported/retry semantics are explicit, typed Eggress provenance is retained where the public API exposes it, and the deterministic local fixture matrix demonstrates the direct/TLS/routed claims made by the parent roadmap. Eggress 1.0.8 resolved the C002 public API blocker.
+
+C002 closure evidence: `plans/closure/transport-probe-engine-corrective/002-status.md`.
