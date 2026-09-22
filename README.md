@@ -4,7 +4,7 @@ Eggprobe is a pre-release, JSON-first network diagnostics project. The
 canonical plan/report contract lives in `eggprobe-core`; the `eggprobe` binary
 is a thin presentation adapter and does not own networking.
 
-The repository implements the schema 0.2 diagnostic contract, direct DNS/TCP/TLS
+The repository implements the schema 0.3 diagnostic contract, direct DNS/TCP/TLS
 probes, Eggfetch-backed HTTP, listener-free Eggress routing, typed assertions,
 plan-file/NDJSON automation, and reproducible release scaffolding. Report route
 summaries remain opaque until Eggress parses route input; credentials are never

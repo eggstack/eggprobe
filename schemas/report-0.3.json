@@ -1,0 +1,766 @@
+{
+  "$defs": {
+    "DiagnosticError": {
+      "additionalProperties": false,
+      "description": "A bounded, redaction-safe diagnostic error.",
+      "properties": {
+        "attempt": {
+          "description": "Optional retry/attempt context.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/DiagnosticErrorKind",
+          "description": "Stable category."
+        },
+        "message": {
+          "description": "Bounded message with credentials removed by the producer.",
+          "type": "string"
+        },
+        "route_hop_index": {
+          "description": "Zero-based Eggress route hop that reported the failure, when available.",
+          "format": "uint",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "route_protocol": {
+          "description": "Normalized Eggress hop protocol associated with the failure, when available.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stage": {
+          "$ref": "#/$defs/DiagnosticStage",
+          "description": "Observable failure stage."
+        }
+      },
+      "required": [
+        "kind",
+        "stage",
+        "message"
+      ],
+      "type": "object"
+    },
+    "DiagnosticErrorKind": {
+      "description": "Protocol-neutral diagnostic failure category.",
+      "oneOf": [
+        {
+          "const": "dns",
+          "description": "Name resolution failed.",
+          "type": "string"
+        },
+        {
+          "const": "timeout",
+          "description": "A configured deadline or timeout was exceeded.",
+          "type": "string"
+        },
+        {
+          "const": "connection_refused",
+          "description": "The target actively refused a connection.",
+          "type": "string"
+        },
+        {
+          "const": "network_unreachable",
+          "description": "No route to the network was available.",
+          "type": "string"
+        },
+        {
+          "const": "host_unreachable",
+          "description": "The target host was unreachable.",
+          "type": "string"
+        },
+        {
+          "const": "authentication",
+          "description": "Authentication or authorization failed.",
+          "type": "string"
+        },
+        {
+          "const": "tls",
+          "description": "TLS negotiation or verification failed.",
+          "type": "string"
+        },
+        {
+          "const": "protocol",
+          "description": "Protocol exchange failed.",
+          "type": "string"
+        },
+        {
+          "const": "policy",
+          "description": "Local policy rejected the operation.",
+          "type": "string"
+        },
+        {
+          "const": "io",
+          "description": "Local I/O failed.",
+          "type": "string"
+        },
+        {
+          "const": "unsupported",
+          "description": "The requested operation is not supported.",
+          "type": "string"
+        },
+        {
+          "const": "internal",
+          "description": "Eggprobe could not classify the failure safely.",
+          "type": "string"
+        },
+        {
+          "const": "other",
+          "description": "A dependency-specific error did not fit the stable categories.",
+          "type": "string"
+        }
+      ]
+    },
+    "DiagnosticStage": {
+      "description": "The stage where a diagnostic error occurred.",
+      "oneOf": [
+        {
+          "const": "resolution",
+          "description": "Name resolution.",
+          "type": "string"
+        },
+        {
+          "const": "direct_connect",
+          "description": "Direct connection establishment.",
+          "type": "string"
+        },
+        {
+          "const": "hop_connect",
+          "description": "Proxy hop connection.",
+          "type": "string"
+        },
+        {
+          "const": "hop_handshake",
+          "description": "Proxy hop handshake.",
+          "type": "string"
+        },
+        {
+          "const": "tls_handshake",
+          "description": "TLS handshake.",
+          "type": "string"
+        },
+        {
+          "const": "request",
+          "description": "HTTP request write.",
+          "type": "string"
+        },
+        {
+          "const": "response_headers",
+          "description": "HTTP response headers.",
+          "type": "string"
+        },
+        {
+          "const": "body",
+          "description": "Response body.",
+          "type": "string"
+        },
+        {
+          "const": "deadline",
+          "description": "Outer deadline handling.",
+          "type": "string"
+        },
+        {
+          "const": "other",
+          "description": "A stage not yet represented by the contract.",
+          "type": "string"
+        }
+      ]
+    },
+    "DnsEvidence": {
+      "additionalProperties": false,
+      "description": "DNS evidence available to a report.",
+      "properties": {
+        "addresses": {
+          "description": "Answers observed by Eggprobe's local system resolver. This does not\nrepresent the resolver used by a remote Eggress proxy route.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "resolution_scope": {
+          "$ref": "#/$defs/DnsResolutionScope",
+          "description": "Resolver scope for these answers."
+        }
+      },
+      "required": [
+        "addresses",
+        "resolution_scope"
+      ],
+      "type": "object"
+    },
+    "DnsResolutionScope": {
+      "description": "Resolver that produced the reported DNS answers.",
+      "oneOf": [
+        {
+          "const": "client",
+          "description": "Eggprobe's local client/system resolver.",
+          "type": "string"
+        }
+      ]
+    },
+    "DurationMicros": {
+      "description": "A duration represented as integer microseconds in JSON.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "description": "A normalized assertion result, not a replacement for probe status/errors.",
+      "properties": {
+        "assertion_id": {
+          "description": "Stable assertion identifier.",
+          "type": "string"
+        },
+        "message": {
+          "description": "Bounded explanation.",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/FindingOutcome",
+          "description": "Evaluation outcome."
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity",
+          "description": "Severity assigned by the assertion."
+        }
+      },
+      "required": [
+        "assertion_id",
+        "severity",
+        "outcome",
+        "message"
+      ],
+      "type": "object"
+    },
+    "FindingOutcome": {
+      "description": "Outcome of an assertion evaluation.",
+      "oneOf": [
+        {
+          "const": "passed",
+          "description": "The assertion passed.",
+          "type": "string"
+        },
+        {
+          "const": "failed",
+          "description": "The assertion failed.",
+          "type": "string"
+        },
+        {
+          "const": "unavailable",
+          "description": "The assertion could not be evaluated from available evidence.",
+          "type": "string"
+        }
+      ]
+    },
+    "FindingSeverity": {
+      "description": "Severity of an evaluated assertion finding.",
+      "oneOf": [
+        {
+          "const": "info",
+          "description": "Informational observation.",
+          "type": "string"
+        },
+        {
+          "const": "warning",
+          "description": "An expectation did not hold.",
+          "type": "string"
+        },
+        {
+          "const": "error",
+          "description": "A required expectation did not hold.",
+          "type": "string"
+        }
+      ]
+    },
+    "HttpEvidence": {
+      "additionalProperties": false,
+      "description": "HTTP evidence available to a report.",
+      "properties": {
+        "body_sample_bytes": {
+          "description": "Number of body bytes retained in the bounded sample.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "protocol": {
+          "description": "Negotiated HTTP protocol.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "description": "Observed response status.",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "PhaseTiming": {
+      "additionalProperties": false,
+      "description": "A named phase duration.",
+      "properties": {
+        "duration": {
+          "$ref": "#/$defs/DurationMicros",
+          "description": "Measured phase duration."
+        },
+        "stage": {
+          "$ref": "#/$defs/DiagnosticStage",
+          "description": "Boundary at which the duration was measured."
+        }
+      },
+      "required": [
+        "stage",
+        "duration"
+      ],
+      "type": "object"
+    },
+    "ProbeEvidence": {
+      "description": "Typed observations produced by each probe family.",
+      "oneOf": [
+        {
+          "description": "DNS observations.",
+          "properties": {
+            "data": {
+              "$ref": "#/$defs/DnsEvidence"
+            },
+            "kind": {
+              "const": "dns",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "TCP observations.",
+          "properties": {
+            "data": {
+              "$ref": "#/$defs/TcpEvidence"
+            },
+            "kind": {
+              "const": "tcp",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "TLS observations.",
+          "properties": {
+            "data": {
+              "$ref": "#/$defs/TlsEvidence"
+            },
+            "kind": {
+              "const": "tls",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "HTTP observations.",
+          "properties": {
+            "data": {
+              "$ref": "#/$defs/HttpEvidence"
+            },
+            "kind": {
+              "const": "http",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ProbeKind": {
+      "description": "The stable family of a probe result.",
+      "oneOf": [
+        {
+          "const": "dns",
+          "description": "DNS lookup.",
+          "type": "string"
+        },
+        {
+          "const": "tcp",
+          "description": "TCP connection.",
+          "type": "string"
+        },
+        {
+          "const": "tls",
+          "description": "Standalone TLS handshake.",
+          "type": "string"
+        },
+        {
+          "const": "http",
+          "description": "HTTP request.",
+          "type": "string"
+        }
+      ]
+    },
+    "ProbeResult": {
+      "additionalProperties": false,
+      "description": "One ordered probe result in a report.",
+      "properties": {
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DiagnosticError"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Structured failure, if the probe failed."
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProbeEvidence"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Typed observations, if any were produced."
+        },
+        "findings": {
+          "description": "Findings associated with this result.",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/ProbeKind",
+          "description": "Probe family."
+        },
+        "status": {
+          "$ref": "#/$defs/ProbeStatus",
+          "description": "Operation result state."
+        },
+        "timing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timing"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Measured timing, if the operation started."
+        },
+        "unavailable": {
+          "description": "Facts that were relevant but unavailable through this observer seam.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ProbeStatus": {
+      "description": "Result state of the probe operation itself.",
+      "oneOf": [
+        {
+          "const": "ok",
+          "description": "The requested operation completed.",
+          "type": "string"
+        },
+        {
+          "const": "failed",
+          "description": "The operation ran but failed.",
+          "type": "string"
+        },
+        {
+          "const": "unsupported",
+          "description": "The requested operation is not supported.",
+          "type": "string"
+        },
+        {
+          "const": "cancelled",
+          "description": "The caller cancelled the operation.",
+          "type": "string"
+        }
+      ]
+    },
+    "ReportStatus": {
+      "description": "Overall execution state; child probe states remain independently visible.",
+      "oneOf": [
+        {
+          "const": "ok",
+          "description": "All requested operations completed without a negative probe result.",
+          "type": "string"
+        },
+        {
+          "const": "failed",
+          "description": "At least one probe failed.",
+          "type": "string"
+        },
+        {
+          "const": "unsupported",
+          "description": "At least one requested operation was unsupported.",
+          "type": "string"
+        },
+        {
+          "const": "cancelled",
+          "description": "The execution was cancelled.",
+          "type": "string"
+        }
+      ]
+    },
+    "RouteSummary": {
+      "description": "A redacted route summary. It cannot hold raw plan credentials.",
+      "oneOf": [
+        {
+          "description": "Direct access.",
+          "properties": {
+            "kind": {
+              "const": "direct",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "An Eggress route was selected; raw route syntax is never report data.",
+          "properties": {
+            "kind": {
+              "const": "eggress",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SchemaVersion": {
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "type": "string"
+    },
+    "TargetSummary": {
+      "additionalProperties": false,
+      "description": "A report-safe normalized target.",
+      "properties": {
+        "host": {
+          "description": "Normalized host.",
+          "type": "string"
+        },
+        "port": {
+          "description": "Selected service port, when relevant.",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "host"
+      ],
+      "type": "object"
+    },
+    "TcpEvidence": {
+      "additionalProperties": false,
+      "description": "TCP evidence available to a report.",
+      "properties": {
+        "attempts": {
+          "description": "Number of address attempts made before success.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "local": {
+          "description": "Local address when the provider exposes it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "peer": {
+          "description": "Selected peer address, when observable.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Timing": {
+      "additionalProperties": false,
+      "description": "Timing for one probe, including only phases that were truthfully observed.",
+      "properties": {
+        "phases": {
+          "description": "Ordered phase measurements.",
+          "items": {
+            "$ref": "#/$defs/PhaseTiming"
+          },
+          "type": "array"
+        },
+        "total": {
+          "$ref": "#/$defs/DurationMicros",
+          "description": "Total measured duration."
+        }
+      },
+      "required": [
+        "total"
+      ],
+      "type": "object"
+    },
+    "TlsEvidence": {
+      "additionalProperties": false,
+      "description": "TLS evidence available to a report.",
+      "properties": {
+        "alpn": {
+          "description": "Negotiated application protocol.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cipher_suite": {
+          "description": "Negotiated cipher suite when observed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Negotiated TLS protocol version.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ToolProvenance": {
+      "additionalProperties": false,
+      "description": "Provenance identifying the producer of a report.",
+      "properties": {
+        "name": {
+          "description": "Product name.",
+          "type": "string"
+        },
+        "version": {
+          "$ref": "#/$defs/ToolVersion",
+          "description": "Product/library version, distinct from the schema version."
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "ToolVersion": {
+      "description": "The Eggprobe binary/library version that produced a report.",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "The canonical machine-readable result of one plan execution.",
+  "properties": {
+    "execution_id": {
+      "description": "Caller- or engine-provided execution identifier.",
+      "type": "string"
+    },
+    "findings": {
+      "description": "Top-level assertion findings.",
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "type": "array"
+    },
+    "probes": {
+      "description": "Ordered child probe results.",
+      "items": {
+        "$ref": "#/$defs/ProbeResult"
+      },
+      "type": "array"
+    },
+    "route": {
+      "$ref": "#/$defs/RouteSummary",
+      "description": "Safe route summary, intentionally distinct from `RouteSpec`."
+    },
+    "schema_version": {
+      "const": "0.3"
+    },
+    "status": {
+      "$ref": "#/$defs/ReportStatus",
+      "description": "Overall execution state."
+    },
+    "target": {
+      "$ref": "#/$defs/TargetSummary",
+      "description": "Safe target summary."
+    },
+    "tool": {
+      "$ref": "#/$defs/ToolProvenance",
+      "description": "Producer provenance."
+    },
+    "warnings": {
+      "description": "Non-fatal report-level warnings.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "tool",
+    "execution_id",
+    "target",
+    "route",
+    "status",
+    "probes"
+  ],
+  "title": "ProbeReport",
+  "type": "object"
+}

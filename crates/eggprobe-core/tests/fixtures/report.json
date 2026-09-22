@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.2",
+  "schema_version": "0.3",
   "tool": {
     "name": "eggprobe",
     "version": "0.1.0"
@@ -31,7 +31,8 @@
         "data": {
           "addresses": [
             "192.0.2.10"
-          ]
+          ],
+          "resolution_scope": "client"
         }
       }
     },

@@ -1,0 +1,368 @@
+{
+  "$defs": {
+    "AssertionKind": {
+      "description": "Supported, non-scripted assertion operations.",
+      "oneOf": [
+        {
+          "description": "Require an observed HTTP response status in an inclusive range.",
+          "properties": {
+            "kind": {
+              "const": "http_status_range",
+              "type": "string"
+            },
+            "max": {
+              "description": "Inclusive upper status bound.",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "min": {
+              "description": "Inclusive lower status bound.",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Require an observed HTTP protocol version string.",
+          "properties": {
+            "kind": {
+              "const": "required_http_version",
+              "type": "string"
+            },
+            "version": {
+              "description": "Required protocol value, for example `HTTP/2.0`.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "version"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Require an observed negotiated ALPN value.",
+          "properties": {
+            "kind": {
+              "const": "required_alpn",
+              "type": "string"
+            },
+            "value": {
+              "description": "Required ALPN token.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Require an observed TLS version string.",
+          "properties": {
+            "kind": {
+              "const": "required_tls_version",
+              "type": "string"
+            },
+            "version": {
+              "description": "Required TLS version value.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "version"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Require total probe timing to remain below a microsecond threshold.",
+          "properties": {
+            "kind": {
+              "const": "max_total_micros",
+              "type": "string"
+            },
+            "micros": {
+              "description": "Maximum allowed total duration in microseconds.",
+              "format": "uint64",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "micros"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AssertionSpec": {
+      "additionalProperties": false,
+      "description": "A typed assertion declaration evaluated against completed report evidence.",
+      "properties": {
+        "assertion": {
+          "$ref": "#/$defs/AssertionKind",
+          "description": "Typed assertion operation."
+        },
+        "id": {
+          "description": "Stable caller-provided assertion identifier.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "assertion"
+      ],
+      "type": "object"
+    },
+    "DurationMicros": {
+      "description": "A duration represented as integer microseconds in JSON.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "ExecutionPolicy": {
+      "additionalProperties": false,
+      "description": "Execution limits that are meaningful before network execution exists.",
+      "properties": {
+        "deadline": {
+          "$ref": "#/$defs/DurationMicros",
+          "description": "Outer deadline for one execution, in integer microseconds."
+        },
+        "repetitions": {
+          "description": "Number of declared repetitions.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "retries": {
+          "description": "Explicit retry count per attempt.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "deadline",
+        "repetitions",
+        "retries"
+      ],
+      "type": "object"
+    },
+    "ProbeSpec": {
+      "description": "A probe request with no execution implementation in the foundation milestone.",
+      "oneOf": [
+        {
+          "description": "Resolve the target name.",
+          "properties": {
+            "kind": {
+              "const": "dns",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Establish a direct or routed byte-stream connection.",
+          "properties": {
+            "kind": {
+              "const": "tcp",
+              "type": "string"
+            },
+            "port": {
+              "description": "Port to connect to.",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "port"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Perform a standalone TLS handshake.",
+          "properties": {
+            "kind": {
+              "const": "tls",
+              "type": "string"
+            },
+            "port": {
+              "description": "Port to connect to.",
+              "format": "uint16",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "server_name": {
+              "description": "Optional logical TLS server name.",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "port"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Perform an HTTP request through the eventual HTTP owner.",
+          "properties": {
+            "kind": {
+              "const": "http",
+              "type": "string"
+            },
+            "method": {
+              "default": "GET",
+              "description": "HTTP method, defaulting to GET.",
+              "type": "string"
+            },
+            "url": {
+              "description": "Request URL.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "url"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "RouteSpec": {
+      "description": "A route requested by a plan. This type may contain credentials and is never\ncopied into a report.",
+      "oneOf": [
+        {
+          "description": "Direct target access.",
+          "properties": {
+            "kind": {
+              "const": "direct",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "An Eggress route expression, retained only at the plan boundary.",
+          "properties": {
+            "expression": {
+              "description": "Raw route expression supplied by the caller.",
+              "type": "string"
+            },
+            "kind": {
+              "const": "eggress",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "expression"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SchemaVersion": {
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "type": "string"
+    },
+    "TargetSpec": {
+      "additionalProperties": false,
+      "description": "A user-supplied host and optional service port.",
+      "properties": {
+        "host": {
+          "description": "DNS name or IP literal.",
+          "type": "string"
+        },
+        "port": {
+          "description": "Optional port used by a port-oriented probe.",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "host"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A complete, versioned request for an Eggprobe execution.",
+  "properties": {
+    "assertions": {
+      "default": [],
+      "description": "Deferred assertion declarations retained as typed plan data.",
+      "items": {
+        "$ref": "#/$defs/AssertionSpec"
+      },
+      "type": "array"
+    },
+    "execution": {
+      "$ref": "#/$defs/ExecutionPolicy",
+      "default": {
+        "deadline": 30000000,
+        "repetitions": 1,
+        "retries": 0
+      },
+      "description": "Execution limits and repetition policy."
+    },
+    "probes": {
+      "description": "Ordered probe requests.",
+      "items": {
+        "$ref": "#/$defs/ProbeSpec"
+      },
+      "type": "array"
+    },
+    "route": {
+      "$ref": "#/$defs/RouteSpec",
+      "description": "Requested route, which may contain input-only credentials."
+    },
+    "schema_version": {
+      "const": "0.3"
+    },
+    "target": {
+      "$ref": "#/$defs/TargetSpec",
+      "description": "Target selected by the caller."
+    }
+  },
+  "required": [
+    "schema_version",
+    "target",
+    "route",
+    "probes"
+  ],
+  "title": "ProbePlan",
+  "type": "object"
+}

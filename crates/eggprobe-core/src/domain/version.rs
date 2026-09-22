@@ -33,7 +33,7 @@ impl SchemaVersion {
     pub const INITIAL: Self = Self { major: 0, minor: 1 };
 
     /// The current contract version used by the active binary.
-    pub const CURRENT: Self = Self { major: 0, minor: 2 };
+    pub const CURRENT: Self = Self { major: 0, minor: 3 };
 }
 
 impl fmt::Display for SchemaVersion {

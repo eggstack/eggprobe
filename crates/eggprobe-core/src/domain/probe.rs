@@ -51,8 +51,19 @@ pub enum ProbeEvidence {
 #[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DnsEvidence {
-    /// Answers observed by the selected route.
+    /// Answers observed by Eggprobe's local system resolver. This does not
+    /// represent the resolver used by a remote Eggress proxy route.
     pub addresses: Vec<String>,
+    /// Resolver scope for these answers.
+    pub resolution_scope: DnsResolutionScope,
+}
+
+/// Resolver that produced the reported DNS answers.
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DnsResolutionScope {
+    /// Eggprobe's local client/system resolver.
+    Client,
 }
 
 /// TCP evidence available to a report.

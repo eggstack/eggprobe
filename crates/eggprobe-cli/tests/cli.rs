@@ -146,7 +146,7 @@ async fn compare_keeps_side_specific_statistics_and_negative_exit() {
 
 fn empty_plan(route: &str) -> serde_json::Value {
     serde_json::json!({
-        "schema_version": "0.2",
+        "schema_version": "0.3",
         "target": {"host": "example.com"},
         "route": if route == "direct" {
             serde_json::json!({"kind": "direct"})

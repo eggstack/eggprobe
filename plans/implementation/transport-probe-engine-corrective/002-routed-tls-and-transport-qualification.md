@@ -1,17 +1,16 @@
 # Transport Corrective C002 — Routed, TLS, and Transport Qualification
 
-Status: blocked
+Status: active
 
-Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`; refresh after corrective C001 closes.
+Planning baseline: `2f01ab52fb1abe0e424cd7062b6dcc39d8e5298f`; corrective C001 is closed.
 
 Source addendum:
 
 - `plans/subsystems/transport-probe-engine-corrective-addendum.md#4-c002--routed-tls-and-transport-qualification`
 
-Hard dependency: Transport corrective C001 closed (satisfied). Execution is
-stopped by the published-API provenance stop condition: Eggress 1.0.7 does
-not expose typed hop/stage/protocol failure details through its outbound
-connector.
+Hard dependency: Transport corrective C001 closed (satisfied). Eggress 1.0.8
+exposes typed hop/stage/protocol failure details through its outbound
+connector, resolving the previous 1.0.7 interface blocker.
 
 Primary class: correctness + qualification
 
@@ -21,7 +20,9 @@ Replace closure-by-code-inspection with deterministic local qualification for st
 
 ## 2. Eggress detailed error provenance
 
-Re-check the current published Eggress 1.0.7+ public surface.
+Re-check the current published Eggress public surface. At this baseline,
+Eggress 1.0.8 provides `connect_tcp_detailed()` and
+`connect_tcp_timeout_detailed()` through `eggress-embed`.
 
 Where available, use the detailed connect API rather than `connect_tcp()` and retain:
 

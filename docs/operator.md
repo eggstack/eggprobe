@@ -35,10 +35,11 @@ awaiting work already started. Input is bounded to 4 MiB and batches to 256
 plans. Logs and diagnostics go to stderr; stdout is machine data only when
 `--json` or `--ndjson` is selected.
 
-The checked-in `schemas/*-0.2.json` files describe the active contract. The
-`*-0.1.json` files are retained historical evidence; the binary rejects 0.1
-plans rather than silently reinterpreting them. Rust types remain authoritative,
-and additive evolution is permitted only when optional and redaction-safe.
+The checked-in `schemas/*-0.3.json` files describe the active contract. The
+`*-0.1.json` and `*-0.2.json` files are retained historical evidence; the
+binary rejects earlier plan versions rather than silently reinterpreting them.
+Rust types remain authoritative, and additive evolution is permitted only when
+optional and redaction-safe.
 
 ## Routes and privacy
 
@@ -51,12 +52,16 @@ environment proxy variables or silently fall back to a direct connection.
 
 ## Troubleshooting
 
-- `dns` failures are client/system resolver failures; they do not claim a
-  remote proxy resolver address.
+- DNS probe answers identify the client/system resolver scope and do not claim
+  to be the resolver results used by a remote Eggress hop.
 - `connection_refused`, `timeout`, `tls`, and `protocol` are structured probe
   outcomes in JSON.
 - HTTP per-phase DNS/TCP/TLS timings are explicitly reported unavailable when
   the current Eggfetch public observer does not expose them.
+- DNS probe results are labeled as client resolver evidence. They do not state
+  which DNS resolver an Eggress route used remotely.
+- HTTP currently negotiates HTTP/1.1 or HTTP/2. Plans have no HTTP/3 request
+  selector, and Eggprobe's byte-stream Eggress dialer does not support QUIC.
 - Exit codes are 0 for success, 1 for negative probe/assertion outcomes, 2 for
   invalid invocation/plan, 3 for internal failures, and 130 for interruption.
 

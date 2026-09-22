@@ -1,6 +1,7 @@
 //! Core-owned asynchronous probe execution.
 
 use std::{
+    error::Error as StdError,
     net::IpAddr,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -14,7 +15,6 @@ use rustls::{pki_types::ServerName, ClientConfig, RootCertStore};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::{lookup_host, TcpStream},
-    time::timeout,
 };
 use tokio_rustls::TlsConnector;
 
@@ -73,7 +73,12 @@ impl ProbeEngine {
             return report;
         }
         let deadline = Duration::from_micros(plan.execution.deadline.as_micros());
-        if let Ok(report) = timeout(deadline, self.execute_inner(&plan, execution_id.clone())).await
+        let deadline_at = tokio::time::Instant::now() + deadline;
+        if let Ok(report) = tokio::time::timeout_at(
+            deadline_at,
+            self.execute_inner(&plan, execution_id.clone(), deadline_at),
+        )
+        .await
         {
             report
         } else {
@@ -89,12 +94,17 @@ impl ProbeEngine {
         }
     }
 
-    async fn execute_inner(&self, plan: &ProbePlan, execution_id: String) -> ProbeReport {
+    async fn execute_inner(
+        &self,
+        plan: &ProbePlan,
+        execution_id: String,
+        deadline_at: tokio::time::Instant,
+    ) -> ProbeReport {
         let repetitions = usize::try_from(plan.execution.repetitions).unwrap_or(usize::MAX);
         let mut results = Vec::with_capacity(plan.probes.len().saturating_mul(repetitions));
         for _ in 0..plan.execution.repetitions {
             for spec in &plan.probes {
-                results.push(self.execute_probe(plan, spec).await);
+                results.push(self.execute_probe(plan, spec, deadline_at).await);
             }
         }
         let status = if results.iter().any(|r| r.status == ProbeStatus::Failed) {
@@ -109,7 +119,12 @@ impl ProbeEngine {
         ProbeReport::from_plan(plan, tool(), execution_id, status, results)
     }
 
-    async fn execute_probe(&self, plan: &ProbePlan, spec: &ProbeSpec) -> ProbeResult {
+    async fn execute_probe(
+        &self,
+        plan: &ProbePlan,
+        spec: &ProbeSpec,
+        deadline_at: tokio::time::Instant,
+    ) -> ProbeResult {
         let started = Instant::now();
         let kind = match spec {
             ProbeSpec::Dns => ProbeKind::Dns,
@@ -120,11 +135,12 @@ impl ProbeEngine {
         let is_http = kind == ProbeKind::Http;
         let outcome = match spec {
             ProbeSpec::Dns => self.dns(plan).await,
-            ProbeSpec::Tcp { port } => self.tcp(plan, *port).await,
+            ProbeSpec::Tcp { port } => self.tcp(plan, *port, deadline_at).await,
             ProbeSpec::Tls { port, server_name } => {
-                self.tls(plan, *port, server_name.as_deref()).await
+                self.tls(plan, *port, server_name.as_deref(), deadline_at)
+                    .await
             }
-            ProbeSpec::Http { url, method } => self.http(plan, url, method).await,
+            ProbeSpec::Http { url, method } => self.http(plan, url, method, deadline_at).await,
         };
         let elapsed = DurationMicros::from_micros(
             u64::try_from(started.elapsed().as_micros().min(u128::from(u64::MAX)))
@@ -180,10 +196,16 @@ impl ProbeEngine {
             .await?;
         Ok(ProbeEvidence::Dns(DnsEvidence {
             addresses: addresses.into_iter().map(|a| a.ip().to_string()).collect(),
+            resolution_scope: crate::domain::probe::DnsResolutionScope::Client,
         }))
     }
 
-    async fn tcp(&self, plan: &ProbePlan, port: u16) -> Result<ProbeEvidence, DiagnosticError> {
+    async fn tcp(
+        &self,
+        plan: &ProbePlan,
+        port: u16,
+        deadline_at: tokio::time::Instant,
+    ) -> Result<ProbeEvidence, DiagnosticError> {
         if let RouteSpec::Eggress(route) = &plan.route {
             let connector = egress_connector(&route.expression).map_err(|()| {
                 simple_error(
@@ -193,15 +215,13 @@ impl ProbeEngine {
                 )
             })?;
             let (stream, info) = connector
-                .connect_tcp(&plan.target.host, port)
+                .connect_tcp_timeout_detailed(
+                    &plan.target.host,
+                    port,
+                    route_connect_timeout(deadline_at),
+                )
                 .await
-                .map_err(|_| {
-                    simple_error(
-                        DiagnosticErrorKind::Other,
-                        DiagnosticStage::HopConnect,
-                        "route connection failed",
-                    )
-                })?;
+                .map_err(|error| diagnostic_from_route_error(&error))?;
             drop(stream);
             return Ok(ProbeEvidence::Tcp(TcpEvidence {
                 peer: info.peer_addr.map(|p| p.to_string()),
@@ -241,6 +261,7 @@ impl ProbeEngine {
         plan: &ProbePlan,
         port: u16,
         server_name: Option<&str>,
+        deadline_at: tokio::time::Instant,
     ) -> Result<ProbeEvidence, DiagnosticError> {
         let name = ServerName::try_from(server_name.unwrap_or(&plan.target.host).to_owned())
             .map_err(|_| DiagnosticError {
@@ -248,6 +269,8 @@ impl ProbeEngine {
                 stage: DiagnosticStage::TlsHandshake,
                 message: "invalid TLS server name".into(),
                 attempt: None,
+                route_hop_index: None,
+                route_protocol: None,
             })?;
         match &plan.route {
             RouteSpec::Direct => {
@@ -271,15 +294,13 @@ impl ProbeEngine {
                     )
                 })?;
                 let (stream, _) = connector
-                    .connect_tcp(&plan.target.host, port)
+                    .connect_tcp_timeout_detailed(
+                        &plan.target.host,
+                        port,
+                        route_connect_timeout(deadline_at),
+                    )
                     .await
-                    .map_err(|_| {
-                        simple_error(
-                            DiagnosticErrorKind::Other,
-                            DiagnosticStage::HopConnect,
-                            "route connection failed",
-                        )
-                    })?;
+                    .map_err(|error| diagnostic_from_route_error(&error))?;
                 tls_handshake(name, EgressStream(stream)).await
             }
         }
@@ -290,6 +311,7 @@ impl ProbeEngine {
         plan: &ProbePlan,
         url: &str,
         method: &str,
+        deadline_at: tokio::time::Instant,
     ) -> Result<ProbeEvidence, DiagnosticError> {
         let method = eggfetch_core::Method::from_bytes(method.as_bytes()).map_err(|_| {
             simple_error(
@@ -316,6 +338,7 @@ impl ProbeEngine {
                             "invalid or unsupported Eggress route",
                         )
                     })?),
+                    timeout: route_connect_timeout(deadline_at),
                 });
             }
         }
@@ -358,9 +381,25 @@ where
     let roots = RootCertStore {
         roots: webpki_roots::TLS_SERVER_ROOTS.to_vec(),
     };
-    let config = ClientConfig::builder()
-        .with_root_certificates(roots)
-        .with_no_client_auth();
+    tls_handshake_with_roots(name, stream, roots).await
+}
+
+async fn tls_handshake_with_roots<S>(
+    name: ServerName<'static>,
+    stream: S,
+    roots: RootCertStore,
+) -> Result<ProbeEvidence, DiagnosticError>
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    let config =
+        ClientConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+            .with_safe_default_protocol_versions()
+            .expect("ring supports the configured TLS versions")
+            .with_root_certificates(roots)
+            .with_no_client_auth();
+    let mut config = config;
+    config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
     let stream = TlsConnector::from(Arc::new(config))
         .connect(name, stream)
         .await
@@ -381,6 +420,295 @@ where
             .negotiated_cipher_suite()
             .map(|v| format!("{v:?}")),
     }))
+}
+
+#[cfg(test)]
+mod tls_fixture_tests {
+    use super::*;
+    use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
+    fn fixture_cert() -> (CertificateDer<'static>, PrivateKeyDer<'static>) {
+        let generated = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
+        let cert = CertificateDer::from(generated.cert.der().to_vec());
+        let key =
+            PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(generated.key_pair.serialize_der()));
+        (cert, key)
+    }
+
+    fn tls_server_config(
+        cert: CertificateDer<'static>,
+        key: PrivateKeyDer<'static>,
+        alpn: &[&[u8]],
+    ) -> Arc<rustls::ServerConfig> {
+        let mut config = rustls::ServerConfig::builder_with_provider(Arc::new(
+            rustls::crypto::ring::default_provider(),
+        ))
+        .with_safe_default_protocol_versions()
+        .expect("ring supports the configured TLS versions")
+        .with_no_client_auth()
+        .with_single_cert(vec![cert], key)
+        .unwrap();
+        config.alpn_protocols = alpn.iter().map(|protocol| protocol.to_vec()).collect();
+        Arc::new(config)
+    }
+
+    async fn run_fixture(
+        server_config: Arc<rustls::ServerConfig>,
+        client_name: &str,
+        roots: RootCertStore,
+    ) -> Result<ProbeEvidence, DiagnosticError> {
+        let (client, server) = tokio::io::duplex(64 * 1024);
+        let server = tokio::spawn(async move {
+            let acceptor = tokio_rustls::TlsAcceptor::from(server_config);
+            let _ = acceptor.accept(server).await;
+        });
+        let name = ServerName::try_from(client_name.to_owned()).unwrap();
+        let result = tls_handshake_with_roots(name, client, roots).await;
+        server.abort();
+        result
+    }
+
+    #[tokio::test]
+    async fn trusted_tls_reports_negotiated_metadata_and_alpn() {
+        let (cert, key) = fixture_cert();
+        let mut roots = RootCertStore::empty();
+        roots.add(cert.clone()).unwrap();
+        let evidence = run_fixture(tls_server_config(cert, key, &[b"h2"]), "localhost", roots)
+            .await
+            .unwrap();
+        let ProbeEvidence::Tls(evidence) = evidence else {
+            panic!("expected TLS evidence");
+        };
+        assert!(evidence.version.is_some());
+        assert!(evidence.cipher_suite.is_some());
+        assert_eq!(evidence.alpn.as_deref(), Some("h2"));
+    }
+
+    #[tokio::test]
+    async fn tls_without_server_alpn_reports_absence() {
+        let (cert, key) = fixture_cert();
+        let mut roots = RootCertStore::empty();
+        roots.add(cert.clone()).unwrap();
+        let evidence = run_fixture(tls_server_config(cert, key, &[]), "localhost", roots)
+            .await
+            .unwrap();
+        let ProbeEvidence::Tls(evidence) = evidence else {
+            panic!("expected TLS evidence");
+        };
+        assert_eq!(evidence.alpn, None);
+    }
+
+    #[tokio::test]
+    async fn tls_hostname_mismatch_and_untrusted_issuer_fail_closed() {
+        let (cert, key) = fixture_cert();
+        let mut trusted_roots = RootCertStore::empty();
+        trusted_roots.add(cert.clone()).unwrap();
+        let mismatch = run_fixture(
+            tls_server_config(cert.clone(), key, &[]),
+            "mismatch.local",
+            trusted_roots,
+        )
+        .await;
+        assert!(mismatch.is_err());
+
+        let (untrusted_cert, untrusted_key) = fixture_cert();
+        let untrusted = run_fixture(
+            tls_server_config(untrusted_cert, untrusted_key, &[]),
+            "localhost",
+            RootCertStore::empty(),
+        )
+        .await;
+        assert!(untrusted.is_err());
+    }
+
+    #[tokio::test]
+    async fn routed_tls_preserves_sni_and_hostname_verification() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let (cert, key) = fixture_cert();
+        let mut roots = RootCertStore::empty();
+        roots.add(cert.clone()).unwrap();
+        let acceptor = tokio_rustls::TlsAcceptor::from(tls_server_config(cert, key, &[]));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let origin_port = listener.local_addr().unwrap().port();
+        let origin = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let _ = acceptor.accept(stream).await;
+        });
+
+        let config = eggress_embed::EggressConfig::from_toml_str(
+            "version = 1\n\n[[listeners]]\nname = \"proxy\"\nbind = \"127.0.0.1:0\"\nprotocols = [\"socks5\"]\n",
+        )
+        .unwrap();
+        let proxy = eggress_embed::EggressService::new(config)
+            .start_blocking()
+            .unwrap();
+        let proxy_addr = proxy.bound_addresses().listener("proxy").unwrap();
+        let connector = eggress_embed::outbound::OutboundConnector::from_pproxy_uri(&format!(
+            "socks5://{proxy_addr}"
+        ))
+        .unwrap();
+        let (stream, _) = connector
+            .connect_tcp_timeout_detailed("127.0.0.1", origin_port, Duration::from_secs(2))
+            .await
+            .expect("Eggress should establish the routed TCP stream");
+        let name = ServerName::try_from("localhost".to_owned()).unwrap();
+        let evidence = tls_handshake_with_roots(name, EgressStream(stream), roots)
+            .await
+            .expect("trusted routed TLS handshake with localhost SNI");
+        assert!(matches!(evidence, ProbeEvidence::Tls(_)));
+        proxy.shutdown().await.unwrap();
+        origin.abort();
+    }
+
+    // Keep both client paths together so the local HTTP/2 fixture compares
+    // direct and routed TLS validation under exactly the same origin.
+    #[allow(clippy::too_many_lines)]
+    #[tokio::test]
+    async fn eggfetch_h2_preserves_tls_validation_over_direct_and_eggress_routes() {
+        let _ = rustls::crypto::ring::default_provider().install_default();
+        let (cert, key) = fixture_cert();
+        let mut server_config = rustls::ServerConfig::builder_with_provider(Arc::new(
+            rustls::crypto::ring::default_provider(),
+        ))
+        .with_safe_default_protocol_versions()
+        .expect("ring supports the configured TLS versions")
+        .with_no_client_auth()
+        .with_single_cert(vec![cert.clone()], key)
+        .unwrap();
+        server_config.alpn_protocols = vec![b"h2".to_vec()];
+        let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(server_config));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let origin = tokio::spawn(async move {
+            loop {
+                let Ok((stream, _)) = listener.accept().await else {
+                    break;
+                };
+                let acceptor = acceptor.clone();
+                tokio::spawn(async move {
+                    let Ok(stream) = acceptor.accept(stream).await else {
+                        return;
+                    };
+                    let Ok(mut connection) = h2::server::handshake(stream).await else {
+                        return;
+                    };
+                    while let Some(Ok((_request, mut respond))) = connection.accept().await {
+                        let response = http::Response::builder()
+                            .status(200)
+                            .body(())
+                            .expect("valid fixture response");
+                        if respond.send_response(response, true).is_err() {
+                            return;
+                        }
+                    }
+                });
+            }
+        });
+
+        let tls_config = eggfetch_core::TlsConfig::builder()
+            .ca_certificate_der(vec![cert.to_vec()])
+            .expect("fixture CA is valid")
+            .crypto_provider(Arc::new(rustls::crypto::ring::default_provider()))
+            .build();
+        // Keep localhost as the HTTP origin so Eggfetch performs hostname
+        // validation and emits localhost SNI. The fixture dialer maps that
+        // name to the loopback listener only for the Eggress test route.
+        let url = format!("https://localhost:{port}/qualification");
+        let mut direct = eggfetch_core::Client::builder()
+            .dialer(PolicyDialer {
+                target_policy: TargetPolicy::AllowPrivate,
+            })
+            .tls_config(tls_config.clone())
+            .http_version_policy(eggfetch_core::HttpVersionPolicy::Http2Only)
+            .build()
+            .request(eggfetch_core::Method::GET, &url)
+            .expect("valid direct URL")
+            .send_detailed()
+            .await
+            .expect("trusted direct HTTP/2 request");
+        assert_eq!(direct.status().as_u16(), 200);
+        assert_eq!(format!("{:?}", direct.version()), "HTTP/2.0");
+        let _ = direct.bytes().await.expect("read direct response");
+
+        let config = eggress_embed::EggressConfig::from_toml_str(
+            "version = 1\n\n[[listeners]]\nname = \"proxy\"\nbind = \"127.0.0.1:0\"\nprotocols = [\"socks5\"]\n",
+        )
+        .unwrap();
+        let proxy = eggress_embed::EggressService::new(config)
+            .start_blocking()
+            .unwrap();
+        let proxy_addr = proxy.bound_addresses().listener("proxy").unwrap();
+        let connector = eggress_embed::outbound::OutboundConnector::from_pproxy_uri(&format!(
+            "socks5://{proxy_addr}"
+        ))
+        .unwrap();
+        let mut routed = eggfetch_core::Client::builder()
+            .dialer(LocalhostMappedRouteDialer {
+                connector: Arc::new(connector),
+                timeout: Duration::from_secs(2),
+            })
+            .tls_config(tls_config)
+            .http_version_policy(eggfetch_core::HttpVersionPolicy::Http2Only)
+            .build()
+            .request(eggfetch_core::Method::GET, &url)
+            .expect("valid routed URL")
+            .send_detailed()
+            .await
+            .unwrap_or_else(|failure| {
+                let details = failure
+                    .error()
+                    .custom_transport_error()
+                    .and_then(StdError::source)
+                    .and_then(|source| {
+                        source.downcast_ref::<eggress_embed::outbound::OutboundConnectError>()
+                    })
+                    .map(|error| {
+                        format!(
+                            "{} ({} {}) hop={:?} protocol={:?}",
+                            error,
+                            error.kind(),
+                            error.stage(),
+                            error.hop_index(),
+                            error.protocol()
+                        )
+                    });
+                panic!("trusted routed HTTP/2 request failed: {details:?}");
+            });
+        assert_eq!(routed.status().as_u16(), 200);
+        assert_eq!(format!("{:?}", routed.version()), "HTTP/2.0");
+        let _ = routed.bytes().await.expect("read routed response");
+        drop(routed);
+        proxy.shutdown().await.unwrap();
+        origin.abort();
+    }
+
+    #[derive(Clone)]
+    struct LocalhostMappedRouteDialer {
+        connector: Arc<eggress_embed::outbound::OutboundConnector>,
+        timeout: Duration,
+    }
+
+    impl Dialer for LocalhostMappedRouteDialer {
+        fn dial(&self, target: DialTarget) -> DialFuture<'_> {
+            Box::pin(async move {
+                let host = if target.host() == "localhost" {
+                    "127.0.0.1"
+                } else {
+                    target.host()
+                };
+                self.connector
+                    .connect_tcp_timeout_detailed(host, target.port(), self.timeout)
+                    .await
+                    .map(|(stream, _)| Box::new(EgressStream(stream)) as DialStream)
+                    .map_err(|error| {
+                        DialError::with_source(
+                            DialErrorKind::Connection,
+                            "fixture route connection failed",
+                            error,
+                        )
+                    })
+            })
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -421,16 +749,34 @@ impl Dialer for PolicyDialer {
 #[derive(Clone)]
 struct RouteDialer {
     connector: Arc<eggress_embed::outbound::OutboundConnector>,
+    timeout: Duration,
 }
 
 impl Dialer for RouteDialer {
     fn dial(&self, target: DialTarget) -> DialFuture<'_> {
         Box::pin(async move {
             self.connector
-                .connect_tcp(target.host(), target.port())
+                .connect_tcp_timeout_detailed(target.host(), target.port(), self.timeout)
                 .await
                 .map(|(stream, _)| Box::new(EgressStream(stream)) as DialStream)
-                .map_err(|_| DialError::new(DialErrorKind::Connection, "route connection failed"))
+                .map_err(|error| {
+                    let kind = match error.kind() {
+                        eggress_embed::outbound::OutboundConnectErrorKind::Timeout => {
+                            DialErrorKind::Timeout
+                        }
+                        eggress_embed::outbound::OutboundConnectErrorKind::Authentication => {
+                            DialErrorKind::Authentication
+                        }
+                        eggress_embed::outbound::OutboundConnectErrorKind::Policy => {
+                            DialErrorKind::Rejected
+                        }
+                        eggress_embed::outbound::OutboundConnectErrorKind::Other => {
+                            DialErrorKind::Other
+                        }
+                        _ => DialErrorKind::Connection,
+                    };
+                    DialError::with_source(kind, "route connection failed", error)
+                })
         })
     }
 }
@@ -475,6 +821,14 @@ fn egress_connector(expression: &str) -> Result<eggress_embed::outbound::Outboun
     eggress_embed::outbound::OutboundConnector::from_pproxy_uri(expression).map_err(|_| ())
 }
 
+fn route_connect_timeout(deadline_at: tokio::time::Instant) -> Duration {
+    let remaining = deadline_at.saturating_duration_since(tokio::time::Instant::now());
+    // Let Eggress return its typed deadline slightly before the outer engine
+    // deadline so the timeout retains route-stage provenance.
+    let translation_reserve = Duration::from_millis(10).min(remaining / 100);
+    remaining.saturating_sub(translation_reserve)
+}
+
 async fn resolve_addresses(
     target_policy: TargetPolicy,
     host: &str,
@@ -493,6 +847,8 @@ async fn resolve_addresses(
             stage: DiagnosticStage::Resolution,
             message: safe_io_message(&error),
             attempt: None,
+            route_hop_index: None,
+            route_protocol: None,
         })?;
     let mut addresses = Vec::new();
     for address in results.take(MAX_DNS_ANSWERS) {
@@ -507,6 +863,8 @@ async fn resolve_addresses(
             stage: DiagnosticStage::Resolution,
             message: "no addresses returned".into(),
             attempt: None,
+            route_hop_index: None,
+            route_protocol: None,
         });
     }
     Ok(addresses)
@@ -572,6 +930,11 @@ fn normalize_http_failure(failure: &eggfetch_core::RequestFailure) -> Diagnostic
         };
     }
     if let Some(error) = failure.error().custom_transport_error() {
+        if let Some(route_error) = StdError::source(error).and_then(|source| {
+            source.downcast_ref::<eggress_embed::outbound::OutboundConnectError>()
+        }) {
+            return diagnostic_from_route_error(route_error);
+        }
         return match error.kind() {
             DialErrorKind::Rejected => simple_error(
                 DiagnosticErrorKind::Policy,
@@ -633,6 +996,54 @@ fn normalize_http_failure(failure: &eggfetch_core::RequestFailure) -> Diagnostic
         ),
     }
 }
+
+fn diagnostic_from_route_error(
+    error: &eggress_embed::outbound::OutboundConnectError,
+) -> DiagnosticError {
+    use eggress_embed::outbound::{
+        OutboundConnectErrorKind as Kind, OutboundConnectStage as Stage,
+    };
+
+    let kind = match error.kind() {
+        Kind::Timeout => DiagnosticErrorKind::Timeout,
+        Kind::Dns => DiagnosticErrorKind::Dns,
+        Kind::ConnectionRefused => DiagnosticErrorKind::ConnectionRefused,
+        Kind::NetworkUnreachable => DiagnosticErrorKind::NetworkUnreachable,
+        Kind::HostUnreachable => DiagnosticErrorKind::HostUnreachable,
+        Kind::Authentication => DiagnosticErrorKind::Authentication,
+        Kind::Tls => DiagnosticErrorKind::Tls,
+        Kind::Protocol => DiagnosticErrorKind::Protocol,
+        Kind::Policy => DiagnosticErrorKind::Policy,
+        _ => DiagnosticErrorKind::Other,
+    };
+    let stage = match error.stage() {
+        Stage::DirectConnect => DiagnosticStage::DirectConnect,
+        Stage::HopConnect => DiagnosticStage::HopConnect,
+        Stage::HopHandshake => DiagnosticStage::HopHandshake,
+        Stage::Deadline => DiagnosticStage::Deadline,
+        _ => DiagnosticStage::Other,
+    };
+    let message = match kind {
+        DiagnosticErrorKind::Timeout => "routed connection timed out",
+        DiagnosticErrorKind::Dns => "routed name resolution failed",
+        DiagnosticErrorKind::ConnectionRefused => "routed connection was refused",
+        DiagnosticErrorKind::NetworkUnreachable => "routed network is unreachable",
+        DiagnosticErrorKind::HostUnreachable => "routed host is unreachable",
+        DiagnosticErrorKind::Authentication => "routed authentication failed",
+        DiagnosticErrorKind::Tls => "routed TLS negotiation failed",
+        DiagnosticErrorKind::Protocol => "routed protocol exchange failed",
+        DiagnosticErrorKind::Policy => "routed operation rejected by policy",
+        _ => "routed connection failed",
+    };
+    DiagnosticError {
+        kind,
+        stage,
+        message: message.into(),
+        attempt: None,
+        route_hop_index: error.hop_index(),
+        route_protocol: error.protocol().map(str::to_owned),
+    }
+}
 fn tool() -> ToolProvenance {
     ToolProvenance {
         name: "eggprobe".into(),
@@ -652,6 +1063,8 @@ fn simple_error(
         stage,
         message: message.into(),
         attempt: None,
+        route_hop_index: None,
+        route_protocol: None,
     }
 }
 fn safe_io_message(error: &std::io::Error) -> String {
@@ -674,6 +1087,8 @@ fn normalize_io(
         stage,
         message: safe_io_message(error),
         attempt,
+        route_hop_index: None,
+        route_protocol: None,
     }
 }
 fn policy_error() -> DiagnosticError {

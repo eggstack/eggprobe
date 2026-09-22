@@ -101,7 +101,7 @@ pub enum PlanValidationError {
     #[error("execution repetitions must be greater than zero")]
     ZeroRepetitions,
     /// Retries are reserved for a future explicit attempt contract.
-    #[error("retries are not supported by schema 0.2 (requested {0})")]
+    #[error("retries are not supported by schema 0.3 (requested {0})")]
     UnsupportedRetries(u32),
     /// An inclusive HTTP assertion range cannot have its lower bound above its upper bound.
     #[error("HTTP status assertion minimum {min} exceeds maximum {max}")]

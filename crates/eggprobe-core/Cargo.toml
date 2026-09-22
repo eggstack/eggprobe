@@ -10,8 +10,8 @@ homepage.workspace = true
 
 [dependencies]
 eggfetch-core = { version = "0.2.0", default-features = false, features = ["advanced-routing", "standard-http1", "standard-http2", "tls-rustls"] }
-eggress-core = "1.0.7"
-eggress-embed = { version = "1.0.7", default-features = false, features = ["pproxy-compat"] }
+eggress-core = "1.0.8"
+eggress-embed = { version = "1.0.8", default-features = false, features = ["pproxy-compat"] }
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
@@ -21,6 +21,11 @@ tokio.workspace = true
 tokio-rustls.workspace = true
 url.workspace = true
 webpki-roots.workspace = true
+
+[dev-dependencies]
+h2 = "0.4.12"
+http = "1.3"
+rcgen = "0.13.2"
 
 [lints]
 workspace = true

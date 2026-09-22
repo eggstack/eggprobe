@@ -51,6 +51,7 @@ fn fixture_report() -> ProbeReport {
                 evidence: Some(ProbeEvidence::Dns(
                     eggprobe_core::domain::probe::DnsEvidence {
                         addresses: vec!["192.0.2.10".into()],
+                        resolution_scope: eggprobe_core::DnsResolutionScope::Client,
                     },
                 )),
                 unavailable: vec![],
@@ -68,6 +69,8 @@ fn fixture_report() -> ProbeReport {
                     stage: DiagnosticStage::DirectConnect,
                     message: "connection refused".into(),
                     attempt: Some(1),
+                    route_hop_index: None,
+                    route_protocol: None,
                 }),
                 evidence: None,
                 unavailable: vec![],
@@ -263,7 +266,7 @@ fn malformed_targets_fail_during_json_deserialization() {
 fn version_and_duration_values_are_explicit_and_distinct() {
     let report = fixture_report();
     let value: serde_json::Value = serde_json::to_value(report).unwrap();
-    assert_eq!(value["schema_version"], "0.2");
+    assert_eq!(value["schema_version"], "0.3");
     assert_eq!(value["tool"]["version"], "0.1.0");
     assert_eq!(value["probes"][0]["timing"]["total"], 1250);
 }

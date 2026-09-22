@@ -209,6 +209,7 @@ Current corrective authority:
 - C001: `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md`
 - status: ready for handoff
 
-Release M004 remains blocked until this corrective and the active
-foundation/transport/CLI correctness work close. M003 remains independently
-blocked on the published shared `eggup` interface.
+Release M004 remains blocked until hosted tag evidence for release corrective
+C001 is recorded and active product correctness work closes. Transport C002
+is now active against Eggress 1.0.8. M003 remains independently blocked on the
+published shared `eggup` interface.

@@ -74,4 +74,10 @@ pub struct DiagnosticError {
     /// Optional retry/attempt context.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attempt: Option<u32>,
+    /// Zero-based Eggress route hop that reported the failure, when available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub route_hop_index: Option<usize>,
+    /// Normalized Eggress hop protocol associated with the failure, when available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub route_protocol: Option<String>,
 }

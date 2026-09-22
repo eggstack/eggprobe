@@ -33,7 +33,9 @@ The subsystem must provide one route vocabulary and normalize evidence without e
 - Proxy chains use Eggress.
 - No listener process is required for Eggfetch-over-Eggress composition.
 - Remote proxy DNS is not fabricated from local DNS.
-- Unsupported routed H3 fails explicitly.
+- Routed H3 is unavailable through the byte-stream adapter. Do not claim
+  support or silently downgrade an explicit H3 request if the plan API later
+  gains protocol selection.
 - Retries are opt-in and visible as attempts.
 - Every network probe has a finite outer deadline.
 - Cancellation releases resources.
@@ -96,7 +98,7 @@ Current trace documentation states connector-level DNS/connect/TLS events are no
 
 ### Eggress
 
-Current 1.0.7 `eggress-outbound` exposes:
+Current 1.0.8 `eggress-outbound` exposes:
 
 - `OutboundConnector::direct()`;
 - `OutboundConnector::from_chain(...)`;
@@ -168,7 +170,7 @@ M006 observability refinement
 - M001 hard-depends on foundation corrective C001; historical foundation M001 closure alone is no longer sufficient.
 - M002 hard-depends on transport M001.
 - M003 hard-depends on M001; M002 is a soft dependency because HTTP-associated TLS remains Eggfetch-owned.
-- M004 hard-depends on M001 and has an interface dependency on Eggress 1.0.7 public APIs.
+- M004 hard-depends on M001 and has an interface dependency on Eggress 1.0.8 public APIs.
 - M005 hard-depends on M003 and M004.
 - M006 is an interface/operational upstream enhancement after working consumer paths exist.
 
@@ -356,8 +358,8 @@ The original M001-M006 closure records remain historical evidence; current
 corrective authority is:
 
 - `plans/subsystems/transport-probe-engine-corrective-addendum.md`
-- C001 policy/deadline/retry/error semantics — blocked on Foundation C002
-- C002 routed/TLS/transport qualification — blocked on transport C001
+- C001 policy/deadline/retry/error semantics — closed
+- C002 routed/TLS/transport qualification — active; detailed Eggress errors are available in 1.0.8
 
 Release qualification must not rely on the historical transport closure state
 until both corrective milestones close.
