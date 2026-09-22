@@ -1,6 +1,6 @@
 # Foundation and Diagnostic Contract Milestone 001 — Rust Workspace and Canonical Diagnostic Contract
 
-Status: ready for handoff
+Status: closed
 
 Repository baseline: `4cce819f22774dbf163ea56e4e5b17b07d2249e0` (planning-only repository; no production source)
 

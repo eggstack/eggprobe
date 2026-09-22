@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: blocked pending executable product baseline
+Status: active; M001 ready for handoff
 
 Long-term references:
 
@@ -190,7 +190,7 @@ The subsystem closes when users can obtain, verify, install, run, and update a s
 
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
-| M001 CI/MSRV/audit/release skeleton | blocked | not yet written | pending | executable workspace foundation |
+| M001 CI/MSRV/audit/release skeleton | ready | not yet written | pending | executable workspace and CLI baseline now exists; prepare the release handoff |
 | M002 cross-platform binary packaging | blocked | not yet written | pending | M001 + usable CLI |
 | M003 shared installer/update integration | blocked | not yet written | pending | M002 + eggup interface |
 | M004 release qualification/operator docs | blocked | not yet written | pending | M002; M003 if installer advertised |

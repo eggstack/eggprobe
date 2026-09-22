@@ -1,6 +1,6 @@
 # Transport and Probe Engine Roadmap
 
-Status: blocked pending foundation M001
+Status: active; M001 ready for handoff
 
 Long-term references:
 
@@ -338,7 +338,7 @@ M006 may remain deferred if its unavailable evidence is explicitly represented a
 
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
-| M001 direct route, DNS, and TCP primitives | blocked | not yet written | pending | hard: foundation M001 |
+| M001 direct route, DNS, and TCP primitives | ready | not yet written | pending | foundation M001 closed; prepare the next handoff from the landed contract |
 | M002 standalone TLS diagnostic probe | blocked | not yet written | pending | hard: M001 |
 | M003 Eggfetch-backed HTTP probe | blocked | not yet written | pending | hard: M001 |
 | M004 Eggress listener-free route core | blocked | not yet written | pending | hard: M001 |
