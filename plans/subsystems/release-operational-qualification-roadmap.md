@@ -190,7 +190,7 @@ The subsystem closes when users can obtain, verify, install, run, and update a s
 
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
-| M001 CI/MSRV/audit/release skeleton | ready | not yet written | pending | executable workspace and CLI baseline now exists; prepare the release handoff |
-| M002 cross-platform binary packaging | blocked | not yet written | pending | M001 + usable CLI |
-| M003 shared installer/update integration | blocked | not yet written | pending | M002 + eggup interface |
-| M004 release qualification/operator docs | blocked | not yet written | pending | M002; M003 if installer advertised |
+| M001 CI/MSRV/audit/release skeleton | ready | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | pending | executable workspace and CLI baseline exists |
+| M002 cross-platform binary packaging | blocked | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | pending | M001 + usable diagnostic CLI |
+| M003 shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | pending | M002 + eggup interface |
+| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | M002; M003 if installer advertised |
