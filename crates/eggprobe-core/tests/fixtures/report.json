@@ -11,7 +11,7 @@
   },
   "route": {
     "kind": "eggress",
-    "expression": "http://alice:[REDACTED]@example.net:8080?token=[REDACTED]"
+    "expression": "<redacted>"
   },
   "status": "failed",
   "probes": [

@@ -2,6 +2,7 @@
 
 use std::{fmt, str::FromStr};
 
+use schemars::{json_schema, JsonSchema, Schema, SchemaGenerator};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
@@ -12,6 +13,19 @@ pub struct SchemaVersion {
     pub major: u16,
     /// Additive contract generation within the major version.
     pub minor: u16,
+}
+
+impl JsonSchema for SchemaVersion {
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "SchemaVersion".into()
+    }
+
+    fn json_schema(_generator: &mut SchemaGenerator) -> Schema {
+        json_schema!({
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$"
+        })
+    }
 }
 
 impl SchemaVersion {
@@ -66,9 +80,20 @@ impl<'de> Deserialize<'de> for SchemaVersion {
 }
 
 /// The Eggprobe binary/library version that produced a report.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Hash, JsonSchema, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(transparent)]
+#[schemars(transparent)]
 pub struct ToolVersion(String);
+
+impl<'de> Deserialize<'de> for ToolVersion {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        Self::new(value).map_err(de::Error::custom)
+    }
+}
 
 impl ToolVersion {
     /// Construct a tool version from a non-empty package version string.

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProbePlan",
+  "description": "Generated from eggprobe-core::ProbePlan; run the schema generation test to refresh.",
+  "type": "object",
+  "required": ["schema_version", "target", "route", "probes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "target": { "$ref": "#/$defs/TargetSpec" },
+    "route": { "$ref": "#/$defs/RouteSpec" },
+    "probes": { "type": "array", "items": { "$ref": "#/$defs/ProbeSpec" } },
+    "execution": { "$ref": "#/$defs/ExecutionPolicy", "default": { "deadline": 30000000, "repetitions": 1, "retries": 0 } },
+    "assertions": { "type": "array", "items": { "$ref": "#/$defs/AssertionSpec" } }
+  },
+  "$defs": {
+    "TargetSpec": {
+      "type": "object", "required": ["host"], "additionalProperties": false,
+      "properties": { "host": { "type": "string" }, "port": { "type": "integer", "minimum": 1, "maximum": 65535 } }
+    },
+    "RouteSpec": {
+      "oneOf": [
+        { "type": "object", "required": ["kind"], "additionalProperties": false, "properties": { "kind": { "const": "direct" } } },
+        { "type": "object", "required": ["kind", "expression"], "additionalProperties": false, "properties": { "kind": { "const": "eggress" }, "expression": { "type": "string", "minLength": 1 } } }
+      ]
+    },
+    "ProbeSpec": {
+      "oneOf": [
+        { "type": "object", "required": ["kind"], "additionalProperties": false, "properties": { "kind": { "const": "dns" } } },
+        { "type": "object", "required": ["kind", "port"], "additionalProperties": false, "properties": { "kind": { "const": "tcp" }, "port": { "type": "integer", "minimum": 1, "maximum": 65535 } } },
+        { "type": "object", "required": ["kind", "port"], "additionalProperties": false, "properties": { "kind": { "const": "tls" }, "port": { "type": "integer", "minimum": 1, "maximum": 65535 }, "server_name": { "type": "string" } } },
+        { "type": "object", "required": ["kind", "url"], "additionalProperties": false, "properties": { "kind": { "const": "http" }, "url": { "type": "string", "minLength": 1 }, "method": { "type": "string", "default": "GET" } } }
+      ]
+    },
+    "ExecutionPolicy": {
+      "type": "object", "required": ["deadline", "repetitions", "retries"], "additionalProperties": false,
+      "properties": { "deadline": { "type": "integer", "minimum": 1 }, "repetitions": { "type": "integer", "minimum": 1 }, "retries": { "type": "integer", "minimum": 0 } }
+    },
+    "AssertionSpec": {
+      "type": "object", "required": ["id", "description"], "additionalProperties": false,
+      "properties": { "id": { "type": "string", "minLength": 1 }, "description": { "type": "string" } }
+    }
+  }
+}

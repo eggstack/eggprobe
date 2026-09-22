@@ -2,7 +2,8 @@ use eggprobe_core::{
     render::render_human, DiagnosticError, DiagnosticErrorKind, DiagnosticStage, DurationMicros,
     EggressRoute, ExecutionPolicy, Finding, FindingOutcome, FindingSeverity, PhaseTiming,
     ProbeEvidence, ProbeKind, ProbePlan, ProbeReport, ProbeResult, ProbeSpec, ProbeStatus,
-    ReportStatus, RouteSpec, SchemaVersion, TargetSpec, Timing, ToolProvenance, ToolVersion,
+    ReportStatus, RouteSpec, RouteSummary, SchemaVersion, TargetSpec, Timing, ToolProvenance,
+    ToolVersion,
 };
 
 fn fixture_plan() -> ProbePlan {
@@ -134,6 +135,47 @@ fn route_debug_display_report_and_human_output_redact_credentials() {
             "leaked token: {rendered}"
         );
     }
+}
+
+#[test]
+fn opaque_route_boundary_handles_arbitrary_supported_future_syntax() {
+    let expressions = [
+        "socks5://u1:p1@hop1:1080__http://u2:p2@hop2:8080?token=t2",
+        "socks5://user:raw@password@hop:1080?api_key=secret",
+        "http://username-only@hop:8080?password=secret&safe=value",
+    ];
+    for expression in expressions {
+        let route = RouteSpec::Eggress(EggressRoute {
+            expression: expression.into(),
+        });
+        assert_eq!(route.to_string(), "eggress(<redacted>)");
+        assert_eq!(
+            route.summary(),
+            RouteSummary::Eggress {
+                expression: "<redacted>".into(),
+            }
+        );
+        assert!(!format!("{route:?}").contains(expression));
+    }
+}
+
+#[test]
+fn invalid_tool_versions_are_rejected_during_deserialization() {
+    let error = serde_json::from_str::<ToolVersion>("\"\"").unwrap_err();
+    assert!(error.to_string().contains("tool version must not be empty"));
+}
+
+#[test]
+fn contradictory_http_target_is_rejected_by_plan_validation() {
+    let mut plan = fixture_plan();
+    plan.probes = vec![ProbeSpec::Http {
+        url: "http://other.example/".into(),
+        method: "GET".into(),
+    }];
+    assert!(matches!(
+        plan.validate(),
+        Err(eggprobe_core::PlanValidationError::TargetMismatch { .. })
+    ));
 }
 
 #[test]

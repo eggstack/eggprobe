@@ -1,11 +1,14 @@
 //! Public timing values with one canonical JSON unit.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::error::DiagnosticStage;
 
 /// A duration represented as integer microseconds in JSON.
-#[derive(Clone, Copy, Debug, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, Eq, JsonSchema, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
 #[serde(transparent)]
 pub struct DurationMicros(pub u64);
 
@@ -30,7 +33,7 @@ impl DurationMicros {
 }
 
 /// Timing for one probe, including only phases that were truthfully observed.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Timing {
     /// Total measured duration.
@@ -41,7 +44,7 @@ pub struct Timing {
 }
 
 /// A named phase duration.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PhaseTiming {
     /// Boundary at which the duration was measured.

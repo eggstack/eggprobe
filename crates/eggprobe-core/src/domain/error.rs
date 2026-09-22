@@ -1,9 +1,10 @@
 //! Structured diagnostic failures.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Protocol-neutral diagnostic failure category.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DiagnosticErrorKind {
     /// Name resolution failed.
@@ -35,7 +36,7 @@ pub enum DiagnosticErrorKind {
 }
 
 /// The stage where a diagnostic error occurred.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DiagnosticStage {
     /// Name resolution.
@@ -61,7 +62,7 @@ pub enum DiagnosticStage {
 }
 
 /// A bounded, redaction-safe diagnostic error.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DiagnosticError {
     /// Stable category.

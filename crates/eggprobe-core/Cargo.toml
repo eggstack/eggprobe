@@ -9,9 +9,17 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
+eggfetch-core = { version = "0.2.0", default-features = false, features = ["advanced-routing", "standard-http1", "standard-http2", "tls-rustls"] }
+eggress-core = "1.0.7"
+eggress-embed = { version = "1.0.7", default-features = false, features = ["pproxy-compat"] }
 serde.workspace = true
 serde_json.workspace = true
+schemars.workspace = true
+rustls.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+tokio-rustls.workspace = true
+webpki-roots.workspace = true
 
 [lints]
 workspace = true

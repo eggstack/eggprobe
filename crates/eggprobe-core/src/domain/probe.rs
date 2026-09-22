@@ -1,11 +1,12 @@
 //! Probe result envelopes and typed evidence.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{error::DiagnosticError, finding::Finding, timing::Timing};
 
 /// The stable family of a probe result.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProbeKind {
     /// DNS lookup.
@@ -19,7 +20,7 @@ pub enum ProbeKind {
 }
 
 /// Result state of the probe operation itself.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProbeStatus {
     /// The requested operation completed.
@@ -33,7 +34,7 @@ pub enum ProbeStatus {
 }
 
 /// Typed observations produced by each probe family.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind", content = "data")]
 pub enum ProbeEvidence {
     /// DNS observations.
@@ -47,7 +48,7 @@ pub enum ProbeEvidence {
 }
 
 /// DNS evidence available to a report.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DnsEvidence {
     /// Answers observed by the selected route.
@@ -55,16 +56,22 @@ pub struct DnsEvidence {
 }
 
 /// TCP evidence available to a report.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TcpEvidence {
     /// Selected peer address, when observable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub peer: Option<String>,
+    /// Local address when the provider exposes it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub local: Option<String>,
+    /// Number of address attempts made before success.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub attempts: u32,
 }
 
 /// TLS evidence available to a report.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TlsEvidence {
     /// Negotiated TLS protocol version.
@@ -73,10 +80,13 @@ pub struct TlsEvidence {
     /// Negotiated application protocol.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alpn: Option<String>,
+    /// Negotiated cipher suite when observed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cipher_suite: Option<String>,
 }
 
 /// HTTP evidence available to a report.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HttpEvidence {
     /// Observed response status.
@@ -85,10 +95,18 @@ pub struct HttpEvidence {
     /// Negotiated HTTP protocol.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub protocol: Option<String>,
+    /// Number of body bytes retained in the bounded sample.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub body_sample_bytes: u32,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_zero(value: &u32) -> bool {
+    *value == 0
 }
 
 /// One ordered probe result in a report.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProbeResult {
     /// Probe family.

@@ -1,5 +1,6 @@
 //! Canonical report envelope and safe route/target summaries.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -11,7 +12,7 @@ use super::{
 };
 
 /// Provenance identifying the producer of a report.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ToolProvenance {
     /// Product name.
@@ -21,7 +22,7 @@ pub struct ToolProvenance {
 }
 
 /// A report-safe normalized target.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TargetSummary {
     /// Normalized host.
@@ -41,7 +42,7 @@ impl From<&TargetSpec> for TargetSummary {
 }
 
 /// A redacted route summary. It cannot hold raw plan credentials.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum RouteSummary {
     /// Direct access.
@@ -54,7 +55,7 @@ pub enum RouteSummary {
 }
 
 /// Overall execution state; child probe states remain independently visible.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReportStatus {
     /// All requested operations completed without a negative probe result.
@@ -68,7 +69,7 @@ pub enum ReportStatus {
 }
 
 /// The canonical machine-readable result of one plan execution.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, JsonSchema, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProbeReport {
     /// Machine contract version.

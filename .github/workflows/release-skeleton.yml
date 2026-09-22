@@ -1,0 +1,25 @@
+name: Release skeleton
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  qualify:
+    name: Build and smoke release profile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --locked --release
+      - run: ./target/release/eggprobe --version
+      - run: ./target/release/eggprobe --help
+      - run: cargo test --workspace --locked
+      # Upload/publish is intentionally absent until packaging qualification.

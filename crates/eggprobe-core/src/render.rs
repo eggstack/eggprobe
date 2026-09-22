@@ -27,6 +27,13 @@ pub fn render_human(report: &ProbeReport) -> String {
             writeln!(output, "  error: {}", error.message)
                 .expect("writing to a String cannot fail");
         }
+        if let Some(evidence) = &probe.evidence {
+            writeln!(output, "  evidence: {evidence:?}").expect("writing to a String cannot fail");
+        }
+        for unavailable in &probe.unavailable {
+            writeln!(output, "  unavailable: {unavailable}")
+                .expect("writing to a String cannot fail");
+        }
     }
     output
 }

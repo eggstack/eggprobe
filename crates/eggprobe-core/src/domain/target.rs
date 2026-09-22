@@ -2,11 +2,12 @@
 
 use std::{fmt, net::IpAddr};
 
+use schemars::JsonSchema;
 use serde::{de, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 /// A user-supplied host and optional service port.
-#[derive(Clone, Eq, PartialEq, Serialize)]
+#[derive(Clone, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct TargetSpec {
     /// DNS name or IP literal.

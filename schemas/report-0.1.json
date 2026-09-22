@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProbeReport",
+  "description": "Generated from eggprobe-core::ProbeReport; report route summaries are opaque before Eggress parsing.",
+  "type": "object",
+  "required": ["schema_version", "tool", "execution_id", "target", "route", "status", "probes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "tool": { "type": "object", "required": ["name", "version"], "additionalProperties": false, "properties": { "name": { "type": "string" }, "version": { "type": "string", "minLength": 1 } } },
+    "execution_id": { "type": "string" },
+    "target": { "$ref": "plan-0.1.json#/$defs/TargetSpec" },
+    "route": { "oneOf": [ { "type": "object", "required": ["kind"], "additionalProperties": false, "properties": { "kind": { "const": "direct" } } }, { "type": "object", "required": ["kind", "expression"], "additionalProperties": false, "properties": { "kind": { "const": "eggress" }, "expression": { "const": "<redacted>" } } } ] },
+    "status": { "enum": ["ok", "failed", "unsupported", "cancelled"] },
+    "probes": { "type": "array", "items": { "type": "object" } },
+    "findings": { "type": "array", "items": { "type": "object" } },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  }
+}
