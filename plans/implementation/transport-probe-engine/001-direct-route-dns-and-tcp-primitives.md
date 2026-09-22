@@ -1,6 +1,6 @@
 # Transport and Probe Engine M001 — Direct Route, DNS, and TCP Primitives
 
-Status: blocked
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after corrective C001 closure.
 

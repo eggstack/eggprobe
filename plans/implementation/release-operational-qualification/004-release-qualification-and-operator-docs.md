@@ -1,6 +1,6 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: blocked
+Status: ready — not executed because sequential run stopped at Release M003 blocker
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after release artifacts exist.
 

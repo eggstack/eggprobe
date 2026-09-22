@@ -1,6 +1,6 @@
 # CLI and Automation M004 — Route Comparison and Repetition Statistics
 
-Status: blocked
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after dependencies close.
 

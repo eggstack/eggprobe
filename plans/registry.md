@@ -26,58 +26,34 @@ Canonical direction:
 
 | Subsystem | Status | Roadmap | Current milestone | Dependencies or blockers |
 |---|---|---|---|---|
-| Foundation and diagnostic contract | active | `plans/subsystems/foundation-diagnostic-contract-roadmap.md` | historical M001 closed; M002 blocked | M002 hard-blocked on post-closure corrective C001. |
-| Foundation post-closure corrective | active | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` | C001 ready | Security/contract corrective for route redaction, validated deserialization, and target authority. |
-| Transport and probe engine | blocked | `plans/subsystems/transport-probe-engine-roadmap.md` | M001 blocked | Hard: foundation corrective C001. |
-| CLI and automation | blocked | `plans/subsystems/cli-automation-roadmap.md` | M001 blocked | Requires real primitive probe capabilities. |
-| Release and operational qualification | active | `plans/subsystems/release-operational-qualification-roadmap.md` | M001 ready | Independent release/CI skeleton can proceed from current executable workspace. |
+| Foundation and diagnostic contract | closed through M002 | `plans/subsystems/foundation-diagnostic-contract-roadmap.md` | M002 closed | Corrective C001 and schema gate closed. |
+| Foundation post-closure corrective | closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` | C001 closed | Route redaction, validated wrappers, and target authority repaired. |
+| Transport and probe engine | closed through M006 | `plans/subsystems/transport-probe-engine-roadmap.md` | M006 closed | H3/datagram and richer upstream observers remain deferred. |
+| CLI and automation | closed through M004 | `plans/subsystems/cli-automation-roadmap.md` | M004 closed | Core-owned execution and automation surfaces are available. |
+| Release and operational qualification | blocked at M003 | `plans/subsystems/release-operational-qualification-roadmap.md` | M003 blocked | No published shared eggup interface; manual archives remain. |
 
 ## Dependency-ready implementation plans
 
 | Subsystem | Milestone | Status | Implementation plan | Handoff note |
 |---|---|---|---|---|
-| Foundation post-closure corrective | C001 route redaction and contract integrity | ready | `plans/implementation/foundation-diagnostic-contract-corrective/001-route-redaction-and-contract-integrity.md` | Immediate contract/security gate. Keep raw Eggress route opaque until Eggress owns parsing. |
-| Release and operational qualification | M001 CI/MSRV/audit/release skeleton | ready | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | Independent of route semantics; extends existing CI without publishing artifacts. |
+| Foundation post-closure corrective | C001 route redaction and contract integrity | closed | `plans/implementation/foundation-diagnostic-contract-corrective/001-route-redaction-and-contract-integrity.md` | `plans/closure/foundation-diagnostic-contract-corrective/001-status.md` |
+| Foundation and diagnostic contract | M002 published schema and compatibility fixture gate | closed | `plans/implementation/foundation-diagnostic-contract/002-published-schema-and-compatibility-fixture-gate.md` | `plans/closure/foundation-diagnostic-contract/002-status.md` |
+| Release and operational qualification | M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` |
+| Release and operational qualification | M002 cross-platform binary packaging | conditionally closed | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | `plans/closure/release-operational-qualification/002-status.md` |
+| Release and operational qualification | M004 release qualification/operator docs | ready | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | Conditional M003 dependency is not advertised; execution intentionally paused at the M003 gate. |
 
 ## Registered blocked implementation plans
 
 | Subsystem | Milestone | Plan | Blocker |
 |---|---|---|---|
-| Foundation and diagnostic contract | M002 published schema and compatibility fixture gate | `plans/implementation/foundation-diagnostic-contract/002-published-schema-and-compatibility-fixture-gate.md` | corrective C001 |
-| Transport and probe engine | M001 direct route, DNS, and TCP primitives | `plans/implementation/transport-probe-engine/001-direct-route-dns-and-tcp-primitives.md` | corrective C001 |
-| Transport and probe engine | M002 standalone TLS diagnostic probe | `plans/implementation/transport-probe-engine/002-standalone-tls-diagnostic-probe.md` | transport M001 |
-| Transport and probe engine | M003 Eggfetch-backed HTTP probe | `plans/implementation/transport-probe-engine/003-eggfetch-backed-http-probe.md` | transport M001 |
-| Transport and probe engine | M004 Eggress listener-free route core | `plans/implementation/transport-probe-engine/004-eggress-listener-free-route-core.md` | transport M001 |
-| Transport and probe engine | M005 Eggfetch over Eggress for routed HTTP(S) | `plans/implementation/transport-probe-engine/005-eggfetch-over-egress-routed-http.md` | transport M003 + M004 |
-| Transport and probe engine | M006 upstream diagnostic observability refinement | `plans/implementation/transport-probe-engine/006-upstream-diagnostic-observability-refinement.md` | demonstrated gaps from M003-M005 |
-| CLI and automation | M001 primitive command surface and renderers | `plans/implementation/cli-automation/001-primitive-command-surface-and-renderers.md` | required primitive probes |
-| CLI and automation | M002 composite check/assertions/exit codes | `plans/implementation/cli-automation/002-composite-check-assertions-and-exit-codes.md` | CLI M001 |
-| CLI and automation | M003 plan files/schema/NDJSON/batch | `plans/implementation/cli-automation/003-plan-files-schema-ndjson-and-batch.md` | foundation M002 + CLI M002 |
-| CLI and automation | M004 route comparison/repetition statistics | `plans/implementation/cli-automation/004-route-comparison-and-repetition-statistics.md` | CLI M002 + transport M005 |
-| Release and operational qualification | M002 cross-platform binary packaging | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | release M001 + usable diagnostic CLI |
 | Release and operational qualification | M003 shared installer/update integration | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | release M002 + stable eggup interface |
-| Release and operational qualification | M004 release qualification/operator docs | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | release M002; M003 only if installer advertised |
 
 ## Current execution order and dependency gates
 
-1. **Execute corrective C001 first for contract-bearing work.**
-   - It repairs the M001 route-redaction invariant and validation/target-authority gaps.
-   - Historical M001 closure remains immutable evidence; C001 supersedes its broad redaction conclusion.
-2. **Release M001 may execute in parallel.**
-   - It changes CI/release scaffolding, not route/report semantics.
-3. **After C001 closure:**
-   - Foundation M002 becomes ready.
-   - Transport M001 becomes ready.
-4. **After Transport M001:**
-   - Transport M002 TLS, M003 Eggfetch HTTP, and M004 Eggress route work become dependency-ready according to their plans.
-5. **After Transport M003 + M004:**
-   - Transport M005 routed H1/H2 becomes ready.
-6. **Transport M006 is evidence-driven.**
-   - Execute only for observer gaps proven by working M003-M005 paths.
-7. **CLI milestones follow implemented core capabilities.**
-8. **Release M002 follows release M001 plus a meaningful diagnostic CLI.**
-9. **Release M003 remains blocked on the shared Eggstack updater interface; do not copy updater logic.**
-10. **Release M004 is the final release-candidate evidence/doc reconciliation.**
+1. **C001, Foundation M002, Transport M001–M006, and CLI M001–M004 are closed.**
+2. **Release M001 is closed and M002 is conditionally closed pending external artifact evidence.**
+3. **Release M003 is blocked because no published shared Eggstack updater interface exists; updater logic was not copied.**
+4. **Release M004 is marked ready in its roadmap because its updater dependency is conditional, but sequential execution stopped at the M003 blocker per the handoff instruction.**
 
 ## External interface baselines reviewed
 
@@ -96,7 +72,7 @@ Implementation agents MUST re-check published dependency surfaces at their actua
 | Work | Status | Evidence | Note |
 |---|---|---|---|
 | Foundation M001 | historically closed | `plans/closure/foundation-diagnostic-contract/001-status.md`; implementation `f802e30` | Post-closure review found a route-redaction gap; do not rewrite this historical record. |
-| Foundation corrective C001 | ready | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md`; `plans/implementation/foundation-diagnostic-contract-corrective/001-route-redaction-and-contract-integrity.md` | Must close before schema freeze or transport execution. |
+| Foundation corrective C001 | closed | `plans/closure/foundation-diagnostic-contract-corrective/001-status.md` | Corrective gate satisfied before schema/transport execution. |
 
 ## Long-range roadmap disposition
 

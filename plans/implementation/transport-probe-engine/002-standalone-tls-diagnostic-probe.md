@@ -1,6 +1,6 @@
 # Transport and Probe Engine M002 — Standalone TLS Diagnostic Probe
 
-Status: blocked
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh when M001 closes.
 

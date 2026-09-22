@@ -1,6 +1,6 @@
 # CLI and Automation M001 — Primitive Command Surface and Renderers
 
-Status: blocked
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh when required core probes close.
 

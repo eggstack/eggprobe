@@ -1,6 +1,6 @@
 # Foundation Diagnostic Contract Corrective C001 — Route Redaction and Contract Integrity
 
-Status: ready for handoff
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`
 

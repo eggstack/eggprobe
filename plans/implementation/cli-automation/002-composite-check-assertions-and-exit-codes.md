@@ -1,6 +1,6 @@
 # CLI and Automation M002 — Composite Check, Assertions, and Exit Codes
 
-Status: blocked
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after CLI M001 closes.
 

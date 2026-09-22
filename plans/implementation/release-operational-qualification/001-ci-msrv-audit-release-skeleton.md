@@ -1,6 +1,6 @@
 # Release and Operational Qualification M001 — CI, MSRV, Audit, and Release Skeleton
 
-Status: ready for handoff
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`
 

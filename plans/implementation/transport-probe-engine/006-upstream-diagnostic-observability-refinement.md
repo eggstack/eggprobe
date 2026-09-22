@@ -1,6 +1,6 @@
 # Transport and Probe Engine M006 — Upstream Diagnostic Observability Refinement
 
-Status: blocked
+Status: closed — no upstream change required
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after M003-M005 consumer paths exist.
 

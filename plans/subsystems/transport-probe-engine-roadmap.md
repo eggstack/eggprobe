@@ -1,6 +1,6 @@
 # Transport and Probe Engine Roadmap
 
-Status: blocked pending foundation corrective C001
+Status: closed through M006; future H3/datagram work remains roadmap-level
 
 Long-term references:
 
@@ -341,9 +341,9 @@ M006 may remain deferred if its unavailable evidence is explicitly represented a
 
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
-| M001 direct route, DNS, and TCP primitives | blocked | `plans/implementation/transport-probe-engine/001-direct-route-dns-and-tcp-primitives.md` | pending | hard: foundation corrective C001 |
-| M002 standalone TLS diagnostic probe | blocked | `plans/implementation/transport-probe-engine/002-standalone-tls-diagnostic-probe.md` | pending | hard: M001 |
-| M003 Eggfetch-backed HTTP probe | blocked | `plans/implementation/transport-probe-engine/003-eggfetch-backed-http-probe.md` | pending | hard: M001 |
-| M004 Eggress listener-free route core | blocked | `plans/implementation/transport-probe-engine/004-eggress-listener-free-route-core.md` | pending | hard: M001 |
-| M005 Eggfetch over Eggress for routed HTTP(S) | blocked | `plans/implementation/transport-probe-engine/005-eggfetch-over-egress-routed-http.md` | pending | hard: M003 + M004 |
-| M006 upstream diagnostic observability refinement | blocked | `plans/implementation/transport-probe-engine/006-upstream-diagnostic-observability-refinement.md` | pending | interface evidence: consumer paths M003-M005 |
+| M001 direct route, DNS, and TCP primitives | closed | `plans/implementation/transport-probe-engine/001-direct-route-dns-and-tcp-primitives.md` | `plans/closure/transport-probe-engine/001-status.md` | — |
+| M002 standalone TLS diagnostic probe | closed | `plans/implementation/transport-probe-engine/002-standalone-tls-diagnostic-probe.md` | `plans/closure/transport-probe-engine/002-status.md` | — |
+| M003 Eggfetch-backed HTTP probe | closed | `plans/implementation/transport-probe-engine/003-eggfetch-backed-http-probe.md` | `plans/closure/transport-probe-engine/003-status.md` | — |
+| M004 Eggress listener-free route core | closed | `plans/implementation/transport-probe-engine/004-eggress-listener-free-route-core.md` | `plans/closure/transport-probe-engine/004-status.md` | — |
+| M005 Eggfetch over Eggress for routed HTTP(S) | closed | `plans/implementation/transport-probe-engine/005-eggfetch-over-egress-routed-http.md` | `plans/closure/transport-probe-engine/005-status.md` | — |
+| M006 upstream diagnostic observability refinement | closed — no upstream change | `plans/implementation/transport-probe-engine/006-upstream-diagnostic-observability-refinement.md` | `plans/closure/transport-probe-engine/006-status.md` | gaps remain explicitly unavailable |

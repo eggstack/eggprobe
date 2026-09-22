@@ -1,6 +1,6 @@
 # Release and Operational Qualification M003 — Shared Installer and Update Integration
 
-Status: blocked
+Status: blocked — no published eggup interface
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after dependencies close.
 

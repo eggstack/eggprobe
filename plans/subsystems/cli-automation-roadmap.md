@@ -1,6 +1,6 @@
 # CLI and Automation Roadmap
 
-Status: blocked pending core/transport foundations
+Status: closed through M004
 
 Long-term references:
 
@@ -231,7 +231,7 @@ The subsystem closes when interactive and automation users invoke the same engin
 
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
-| M001 primitive command surface and renderers | blocked | `plans/implementation/cli-automation/001-primitive-command-surface-and-renderers.md` | pending | core probes not closed |
-| M002 composite check/assertions/exit codes | blocked | `plans/implementation/cli-automation/002-composite-check-assertions-and-exit-codes.md` | pending | M001 |
-| M003 plan files/schema/NDJSON/batch | blocked | `plans/implementation/cli-automation/003-plan-files-schema-ndjson-and-batch.md` | pending | foundation M002 + M002 |
-| M004 compare/repetition statistics | blocked | `plans/implementation/cli-automation/004-route-comparison-and-repetition-statistics.md` | pending | M002 + transport M005 |
+| M001 primitive command surface and renderers | closed | `plans/implementation/cli-automation/001-primitive-command-surface-and-renderers.md` | `plans/closure/cli-automation/001-status.md` | — |
+| M002 composite check/assertions/exit codes | closed | `plans/implementation/cli-automation/002-composite-check-assertions-and-exit-codes.md` | `plans/closure/cli-automation/002-status.md` | — |
+| M003 plan files/schema/NDJSON/batch | closed | `plans/implementation/cli-automation/003-plan-files-schema-ndjson-and-batch.md` | `plans/closure/cli-automation/003-status.md` | — |
+| M004 compare/repetition statistics | closed | `plans/implementation/cli-automation/004-route-comparison-and-repetition-statistics.md` | `plans/closure/cli-automation/004-status.md` | — |

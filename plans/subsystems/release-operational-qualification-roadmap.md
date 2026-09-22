@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: active; M001 ready for handoff
+Status: blocked at M003 shared updater interface; M001 closed, M002 conditionally closed
 
 Long-term references:
 
@@ -190,7 +190,7 @@ The subsystem closes when users can obtain, verify, install, run, and update a s
 
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
-| M001 CI/MSRV/audit/release skeleton | ready | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | pending | executable workspace and CLI baseline exists |
-| M002 cross-platform binary packaging | blocked | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | pending | M001 + usable diagnostic CLI |
-| M003 shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | pending | M002 + eggup interface |
-| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | M002; M003 if installer advertised |
+| M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | external workflow run evidence remains operational |
+| M002 cross-platform binary packaging | conditionally closed | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | `plans/closure/release-operational-qualification/002-status.md` | tagged workflow/native SBC evidence pending |
+| M003 shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | `plans/closure/release-operational-qualification/003-status.md` | no published eggup interface |
+| M004 release qualification/operator docs | ready but not executed | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | may proceed without advertising M003 updater |

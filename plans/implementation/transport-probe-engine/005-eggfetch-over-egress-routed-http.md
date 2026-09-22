@@ -1,6 +1,6 @@
 # Transport and Probe Engine M005 — Eggfetch over Eggress for Routed HTTP(S)
 
-Status: blocked
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after dependencies close.
 

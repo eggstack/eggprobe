@@ -1,6 +1,6 @@
 # Foundation and Diagnostic Contract Roadmap
 
-Status: active; M001 historically closed; corrective C001 ready; M002 blocked
+Status: closed through M002; corrective C001 closed
 
 Long-term references:
 
@@ -267,4 +267,4 @@ The subsystem closes when the repository has a tested canonical diagnostic model
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
 | M001 Rust workspace and canonical diagnostic contract | closed | `plans/implementation/foundation-diagnostic-contract/001-rust-workspace-and-canonical-diagnostic-contract.md` | `plans/closure/foundation-diagnostic-contract/001-status.md` | — |
-| M002 published schema and compatibility fixture gate | blocked | `plans/implementation/foundation-diagnostic-contract/002-published-schema-and-compatibility-fixture-gate.md` | pending `plans/closure/foundation-diagnostic-contract/002-status.md` | hard: corrective C001 closure |
+| M002 published schema and compatibility fixture gate | closed | `plans/implementation/foundation-diagnostic-contract/002-published-schema-and-compatibility-fixture-gate.md` | `plans/closure/foundation-diagnostic-contract/002-status.md` | — |

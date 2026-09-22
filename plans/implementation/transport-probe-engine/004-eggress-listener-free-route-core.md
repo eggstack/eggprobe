@@ -1,6 +1,6 @@
 # Transport and Probe Engine M004 — Eggress Listener-Free Route Core
 
-Status: blocked
+Status: closed
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after Transport M001 closes.
 

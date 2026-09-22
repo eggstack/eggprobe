@@ -193,9 +193,9 @@ async fn run_input(args: RunArgs) -> Result<(i32, String), String> {
         return Err("batch exceeds 256 plans".into());
     }
     if plans.len() == 1 && !args.ndjson {
-        let report = ProbeEngine::default()
-            .execute(plans.into_iter().next().expect("one plan"))
-            .await;
+        let plan = plans.into_iter().next().expect("one plan");
+        let mut report = ProbeEngine::default().execute(plan.clone()).await;
+        report.findings = evaluate_assertions(&report, &plan.assertions);
         return Ok((exit_code(&report) as i32, render(&report, true)));
     }
     let mut output = String::new();
@@ -204,7 +204,8 @@ async fn run_input(args: RunArgs) -> Result<(i32, String), String> {
         if args.fail_fast && code != 0 {
             break;
         }
-        let report = ProbeEngine::default().execute(plan).await;
+        let mut report = ProbeEngine::default().execute(plan.clone()).await;
+        report.findings = evaluate_assertions(&report, &plan.assertions);
         code = code.max(exit_code(&report) as i32);
         let mut value = serde_json::to_value(&report).map_err(|e| e.to_string())?;
         value["execution_id"] = serde_json::Value::String(format!("batch-{index}"));
