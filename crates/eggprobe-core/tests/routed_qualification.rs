@@ -366,6 +366,41 @@ async fn standalone_tls_handshake_deadline_is_structured() {
 }
 
 #[tokio::test]
+async fn caller_cancellation_drops_routed_tls_transport() {
+    let (proxy, proxy_addr) = start_proxy("[\"socks5\"]", None);
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let observed_close = tokio::spawn(async move {
+        let (mut stream, _) = listener.accept().await.unwrap();
+        let mut bytes = [0; 1024];
+        loop {
+            if stream.read(&mut bytes).await.unwrap() == 0 {
+                break;
+            }
+        }
+    });
+    let diagnostic_plan = plan(
+        "127.0.0.1",
+        Some(port),
+        &format!("socks5://{proxy_addr}"),
+        vec![ProbeSpec::Tls {
+            port,
+            server_name: Some("localhost".into()),
+        }],
+    );
+    let execution =
+        tokio::spawn(async move { ProbeEngine::default().execute(diagnostic_plan).await });
+    tokio::time::sleep(Duration::from_millis(30)).await;
+    execution.abort();
+    let _ = execution.await;
+    tokio::time::timeout(Duration::from_millis(200), observed_close)
+        .await
+        .expect("cancelled routed transport must close")
+        .unwrap();
+    proxy.shutdown_blocking().unwrap();
+}
+
+#[tokio::test]
 async fn caller_cancellation_drops_standalone_tls_transport() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
