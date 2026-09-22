@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: blocked at M003 shared updater interface; M001 closed, M002 conditionally closed
+Status: M001 historical closure retained; M002 corrective active; M003 blocked
 
 Long-term references:
 
@@ -191,6 +191,24 @@ The subsystem closes when users can obtain, verify, install, run, and update a s
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
 | M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | external workflow run evidence remains operational |
-| M002 cross-platform binary packaging | conditionally closed | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | `plans/closure/release-operational-qualification/002-status.md` | tagged workflow/native SBC evidence pending |
+| M002 cross-platform binary packaging | corrective required | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure: `plans/closure/release-operational-qualification/002-status.md` | packaging workflow defects; see corrective C001 |
 | M003 shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | `plans/closure/release-operational-qualification/003-status.md` | no published eggup interface |
-| M004 release qualification/operator docs | ready but not executed | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | may proceed without advertising M003 updater |
+| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | release corrective C001 + active product correctness correctives; M003 only if updater advertised |
+
+
+## 13. Post-closure corrective status
+
+Static audit of the unexecuted M002 packaging workflow found cross-architecture,
+checksum, and version/ref authority defects. The historical conditional closure
+record remains evidence of the first implementation, but M002 is not currently
+release-qualified.
+
+Current corrective authority:
+
+- `plans/subsystems/release-operational-qualification-corrective-addendum.md`
+- C001: `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md`
+- status: ready for handoff
+
+Release M004 remains blocked until this corrective and the active
+foundation/transport/CLI correctness work close. M003 remains independently
+blocked on the published shared `eggup` interface.
