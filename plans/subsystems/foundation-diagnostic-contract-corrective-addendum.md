@@ -1,6 +1,6 @@
 # Foundation Diagnostic Contract — Post-Closure Corrective Addendum
 
-Status: active; C001 ready for handoff
+Status: active; C001 closed; C002 ready for handoff
 
 Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`
 
@@ -72,8 +72,41 @@ Exit conditions:
 - no networking dependency is introduced merely to repair the foundation;
 - strict workspace verification passes.
 
-## 5. Downstream disposition
+## 5. C001 disposition
 
-Foundation M002 and Transport M001 are blocked on C001 closure.
+C001 closed in `plans/closure/foundation-diagnostic-contract-corrective/001-status.md`.
+Foundation M002 and the initial transport sequence were subsequently implemented.
+The historical M001/C001/M002 records are retained as evidence.
 
-The parent M001 closure record is not rewritten. At C001 closure, the registry should record M001 as historically closed plus corrective C001 closed, then re-enable the downstream plans.
+## 6. C002 — Structural report safety and authority normalization
+
+Post-closure review at repository baseline
+`24965aa0ba2696b201e9c74531920877529821d5` found two additional contract
+issues:
+
+- `RouteSummary::Eggress { expression: String }` can itself deserialize or
+  construct arbitrary secret-bearing text even though ordinary report
+  construction inserts `"<redacted>"`;
+- the local HTTP authority parser does not fully normalize scheme-default ports
+  and URL edge cases.
+
+Implementation:
+
+- `plans/implementation/foundation-diagnostic-contract-corrective/002-structural-report-safety-and-authority-normalization.md`
+
+Closure target:
+
+- `plans/closure/foundation-diagnostic-contract-corrective/002-status.md`
+
+Status: ready for handoff.
+
+C002 is a hard gate for the transport and CLI corrective work because it
+advances the pre-1 contract to an explicit corrected schema before those
+correctives add new evidence against it.
+
+## 7. Current downstream disposition
+
+Historical closure records are not rewritten. Foundation C002 is the current
+contract authority. Transport corrective C001 and CLI corrective C001 remain
+blocked until C002 closes. Release packaging corrective C001 is independent and
+may proceed in parallel.
