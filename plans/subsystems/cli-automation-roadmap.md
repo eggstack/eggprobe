@@ -1,6 +1,6 @@
 # CLI and Automation Roadmap
 
-Status: closed through M004
+Status: historical M001-M004 closure retained; post-closure corrective active
 
 Long-term references:
 
@@ -235,3 +235,18 @@ The subsystem closes when interactive and automation users invoke the same engin
 | M002 composite check/assertions/exit codes | closed | `plans/implementation/cli-automation/002-composite-check-assertions-and-exit-codes.md` | `plans/closure/cli-automation/002-status.md` | — |
 | M003 plan files/schema/NDJSON/batch | closed | `plans/implementation/cli-automation/003-plan-files-schema-ndjson-and-batch.md` | `plans/closure/cli-automation/003-status.md` | — |
 | M004 compare/repetition statistics | closed | `plans/implementation/cli-automation/004-route-comparison-and-repetition-statistics.md` | `plans/closure/cli-automation/004-status.md` | — |
+
+
+## 13. Post-closure corrective status
+
+The initial CLI implementation remains useful, but later audit found correctness
+gaps in `check`, batch concurrency, comparison aggregation, and exit handling.
+
+Current corrective authority:
+
+- `plans/subsystems/cli-automation-corrective-addendum.md`
+- C001: `plans/implementation/cli-automation-corrective/001-batch-compare-check-and-exit-correctness.md`
+- blocked on Foundation C002 + Transport corrective C001
+
+Do not treat historical CLI M003/M004 closure as release-qualified automation
+behavior until C001 closes.
