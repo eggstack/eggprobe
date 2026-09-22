@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "tool": {
+    "name": "eggprobe",
+    "version": "0.1.0"
+  },
+  "execution_id": "fixture-0001",
+  "target": {
+    "host": "example.com",
+    "port": 443
+  },
+  "route": {
+    "kind": "eggress",
+    "expression": "http://alice:[REDACTED]@example.net:8080?token=[REDACTED]"
+  },
+  "status": "failed",
+  "probes": [
+    {
+      "kind": "dns",
+      "status": "ok",
+      "timing": {
+        "total": 1250,
+        "phases": [
+          {
+            "stage": "resolution",
+            "duration": 1200
+          }
+        ]
+      },
+      "evidence": {
+        "kind": "dns",
+        "data": {
+          "addresses": [
+            "192.0.2.10"
+          ]
+        }
+      }
+    },
+    {
+      "kind": "tcp",
+      "status": "failed",
+      "timing": {
+        "total": 2300
+      },
+      "error": {
+        "kind": "connection_refused",
+        "stage": "direct_connect",
+        "message": "connection refused",
+        "attempt": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "assertion_id": "tcp-available",
+      "severity": "error",
+      "outcome": "failed",
+      "message": "TCP probe did not establish a connection"
+    }
+  ],
+  "warnings": [
+    "fixture uses synthetic addresses"
+  ]
+}

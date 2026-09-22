@@ -1,0 +1,26 @@
+{
+  "schema_version": "0.1",
+  "target": {
+    "host": "example.com",
+    "port": 443
+  },
+  "route": {
+    "kind": "eggress",
+    "expression": "http://alice:super-secret@example.net:8080?token=fixture-token"
+  },
+  "probes": [
+    {
+      "kind": "dns"
+    },
+    {
+      "kind": "tcp",
+      "port": 443
+    }
+  ],
+  "execution": {
+    "deadline": 5000000,
+    "repetitions": 1,
+    "retries": 0
+  },
+  "assertions": []
+}

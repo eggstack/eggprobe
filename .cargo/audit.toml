@@ -1,0 +1,2 @@
+# Keep the audit policy explicit. Vulnerability exceptions require a reviewed
+# change here with a rationale and an expiry/issue reference.
