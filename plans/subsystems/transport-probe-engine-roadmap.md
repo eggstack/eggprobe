@@ -1,6 +1,6 @@
 # Transport and Probe Engine Roadmap
 
-Status: active; M001 ready for handoff
+Status: blocked pending foundation corrective C001
 
 Long-term references:
 
@@ -142,7 +142,10 @@ The adapter may retain Eggress's typed source error inside Eggfetch's custom tra
 ## 6. Dependency graph
 
 ```text
-foundation M001
+foundation M001 historical closure
+    |
+    v
+foundation corrective C001
     |
     v
 M001 direct route + DNS/TCP
@@ -162,7 +165,7 @@ M005 HTTP over Eggress H1/H2
 M006 observability refinement
 ```
 
-- M001 hard-depends on foundation M001.
+- M001 hard-depends on foundation corrective C001; historical foundation M001 closure alone is no longer sufficient.
 - M002 hard-depends on transport M001.
 - M003 hard-depends on M001; M002 is a soft dependency because HTTP-associated TLS remains Eggfetch-owned.
 - M004 hard-depends on M001 and has an interface dependency on Eggress 1.0.7 public APIs.
@@ -338,9 +341,9 @@ M006 may remain deferred if its unavailable evidence is explicitly represented a
 
 | Milestone | Status | Implementation plan | Closure record | Blockers |
 |---|---|---|---|---|
-| M001 direct route, DNS, and TCP primitives | ready | not yet written | pending | foundation M001 closed; prepare the next handoff from the landed contract |
-| M002 standalone TLS diagnostic probe | blocked | not yet written | pending | hard: M001 |
-| M003 Eggfetch-backed HTTP probe | blocked | not yet written | pending | hard: M001 |
-| M004 Eggress listener-free route core | blocked | not yet written | pending | hard: M001 |
-| M005 Eggfetch over Eggress for routed HTTP(S) | blocked | not yet written | pending | hard: M003 + M004 |
-| M006 upstream diagnostic observability refinement | blocked | not yet written | pending | consumer paths M003-M005 |
+| M001 direct route, DNS, and TCP primitives | blocked | `plans/implementation/transport-probe-engine/001-direct-route-dns-and-tcp-primitives.md` | pending | hard: foundation corrective C001 |
+| M002 standalone TLS diagnostic probe | blocked | `plans/implementation/transport-probe-engine/002-standalone-tls-diagnostic-probe.md` | pending | hard: M001 |
+| M003 Eggfetch-backed HTTP probe | blocked | `plans/implementation/transport-probe-engine/003-eggfetch-backed-http-probe.md` | pending | hard: M001 |
+| M004 Eggress listener-free route core | blocked | `plans/implementation/transport-probe-engine/004-eggress-listener-free-route-core.md` | pending | hard: M001 |
+| M005 Eggfetch over Eggress for routed HTTP(S) | blocked | `plans/implementation/transport-probe-engine/005-eggfetch-over-egress-routed-http.md` | pending | hard: M003 + M004 |
+| M006 upstream diagnostic observability refinement | blocked | `plans/implementation/transport-probe-engine/006-upstream-diagnostic-observability-refinement.md` | pending | interface evidence: consumer paths M003-M005 |
