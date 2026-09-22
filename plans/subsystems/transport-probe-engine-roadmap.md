@@ -1,6 +1,6 @@
 # Transport and Probe Engine Roadmap
 
-Status: closed through M006; future H3/datagram work remains roadmap-level
+Status: historical M001-M006 closure retained; post-closure corrective active
 
 Long-term references:
 
@@ -347,3 +347,17 @@ M006 may remain deferred if its unavailable evidence is explicitly represented a
 | M004 Eggress listener-free route core | closed | `plans/implementation/transport-probe-engine/004-eggress-listener-free-route-core.md` | `plans/closure/transport-probe-engine/004-status.md` | — |
 | M005 Eggfetch over Eggress for routed HTTP(S) | closed | `plans/implementation/transport-probe-engine/005-eggfetch-over-egress-routed-http.md` | `plans/closure/transport-probe-engine/005-status.md` | — |
 | M006 upstream diagnostic observability refinement | closed — no upstream change | `plans/implementation/transport-probe-engine/006-upstream-diagnostic-observability-refinement.md` | `plans/closure/transport-probe-engine/006-status.md` | gaps remain explicitly unavailable |
+
+
+## 13. Post-closure corrective status
+
+Post-closure review found unresolved execution-policy and qualification gaps.
+The original M001-M006 closure records remain historical evidence; current
+corrective authority is:
+
+- `plans/subsystems/transport-probe-engine-corrective-addendum.md`
+- C001 policy/deadline/retry/error semantics — blocked on Foundation C002
+- C002 routed/TLS/transport qualification — blocked on transport C001
+
+Release qualification must not rely on the historical transport closure state
+until both corrective milestones close.
