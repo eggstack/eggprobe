@@ -1,6 +1,6 @@
 # Foundation and Diagnostic Contract Roadmap
 
-Status: closed through M002; corrective C001 closed
+Status: historical M001-M002 closure retained; post-closure corrective C002 active
 
 Long-term references:
 
@@ -268,3 +268,19 @@ The subsystem closes when the repository has a tested canonical diagnostic model
 |---|---|---|---|---|
 | M001 Rust workspace and canonical diagnostic contract | closed | `plans/implementation/foundation-diagnostic-contract/001-rust-workspace-and-canonical-diagnostic-contract.md` | `plans/closure/foundation-diagnostic-contract/001-status.md` | — |
 | M002 published schema and compatibility fixture gate | closed | `plans/implementation/foundation-diagnostic-contract/002-published-schema-and-compatibility-fixture-gate.md` | `plans/closure/foundation-diagnostic-contract/002-status.md` | — |
+
+
+## 13. Post-closure corrective status
+
+The M001/M002 closure records remain historical evidence. A later audit found a
+structural report-route safety issue and incomplete URL authority normalization.
+
+Current corrective authority:
+
+- `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md`
+- C002: `plans/implementation/foundation-diagnostic-contract-corrective/002-structural-report-safety-and-authority-normalization.md`
+- status: ready for handoff
+- closure target: `plans/closure/foundation-diagnostic-contract-corrective/002-status.md`
+
+Do not treat the historical M002 schema closure as the current release contract
+until C002 closes.
