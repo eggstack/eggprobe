@@ -7,7 +7,7 @@ use eggprobe_core::{
 #[test]
 fn renderer_consumes_the_core_report_type() {
     let report = ProbeReport {
-        schema_version: SchemaVersion::INITIAL,
+        schema_version: SchemaVersion::CURRENT,
         tool: ToolProvenance {
             name: "eggprobe".into(),
             version: ToolVersion::new("0.1.0").unwrap(),

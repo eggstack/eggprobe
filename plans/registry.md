@@ -42,10 +42,10 @@ They are not sufficient to override the corrective gates registered below.
 
 | Workstream | Status | Current work | Authority |
 |---|---|---|---|
-| Foundation diagnostic contract | active corrective | C002 ready | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
-| Transport/probe engine | active corrective | C001 blocked on Foundation C002; C002 blocked on C001 | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
-| CLI/automation | active corrective | C001 blocked on Foundation C002 + Transport C001 | `plans/subsystems/cli-automation-corrective-addendum.md` |
-| Release/packaging | active corrective | C001 ready | `plans/subsystems/release-operational-qualification-corrective-addendum.md` |
+| Foundation diagnostic contract | closed corrective | C002 closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
+| Transport/probe engine | blocked corrective | C001 closed; C002 blocked on published Eggress typed failure provenance | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
+| CLI/automation | closed corrective | C001 closed | `plans/subsystems/cli-automation-corrective-addendum.md` |
+| Release/packaging | active corrective | C001 conditionally closed; hosted tag evidence pending | `plans/subsystems/release-operational-qualification-corrective-addendum.md` |
 | Shared updater integration | blocked | Release M003 | no published stable `eggup` interface |
 | Long-range ICMP/path + QUIC/H3 | roadmap-level | no implementation handoff | prerequisite platform/datagram ownership unresolved |
 
@@ -53,16 +53,13 @@ They are not sufficient to override the corrective gates registered below.
 
 | Workstream | Milestone | Status | Implementation plan | Handoff note |
 |---|---|---|---|---|
-| Foundation corrective | C002 structural report safety + authority normalization | ready | `plans/implementation/foundation-diagnostic-contract-corrective/002-structural-report-safety-and-authority-normalization.md` | First contract-bearing handoff. Bump schema explicitly to 0.2; do not mutate 0.1 in place. |
-| Release corrective | C001 packaging workflow correction + hosted evidence | ready | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | May execute in parallel with Foundation C002. Does not publish updater logic. |
+| Release corrective | C001 packaging workflow correction + hosted evidence | conditionally closed | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | Hosted dispatch awaits an existing release tag; local package evidence is recorded. |
 
 ## Registered blocked corrective plans
 
 | Workstream | Milestone | Status | Implementation plan | Blocker |
 |---|---|---|---|---|
-| Transport corrective | C001 policy/deadline/retry/error semantics | blocked | `plans/implementation/transport-probe-engine-corrective/001-policy-deadline-retry-and-error-semantics.md` | Foundation C002 |
-| Transport corrective | C002 routed/TLS/transport qualification | blocked | `plans/implementation/transport-probe-engine-corrective/002-routed-tls-and-transport-qualification.md` | Transport C001 |
-| CLI corrective | C001 batch/compare/check/exit correctness | blocked | `plans/implementation/cli-automation-corrective/001-batch-compare-check-and-exit-correctness.md` | Foundation C002 + Transport C001 |
+| Transport corrective | C002 routed/TLS/transport qualification | blocked | `plans/implementation/transport-probe-engine-corrective/002-routed-tls-and-transport-qualification.md` | published Eggress 1.0.7 lacks typed hop/stage/protocol failure provenance |
 | Release M003 | shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | stable published `eggup` interface |
 | Release M004 | release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | active Foundation/Transport/CLI/Release correctives; M003 only if updater advertised |
 
@@ -70,8 +67,8 @@ They are not sufficient to override the corrective gates registered below.
 
 ### Foundation C002
 
-- `RouteSummary::Eggress { expression: String }` is not structurally secret-safe;
-- generated report schema permits arbitrary route expression text;
+- historical `RouteSummary::Eggress { expression: String }` was not structurally secret-safe;
+- historical report schema permitted arbitrary route expression text;
 - HTTP authority parsing is hand-written and mishandles scheme-default ports/edge cases;
 - corrected machine contract must move to schema 0.2 while preserving historical 0.1 artifacts.
 
@@ -84,6 +81,14 @@ They are not sufficient to override the corrective gates registered below.
 - Eggress failures lose detailed kind/stage/hop/protocol provenance;
 - required standalone TLS, SOCKS5, HTTP CONNECT, multi-hop, and routed HTTP fixture evidence is absent;
 - routed H3 semantics are not yet represented as an explicit structured unsupported request.
+
+### Transport C002 blocker
+
+Published Eggress 1.0.7 exposes only `EggressError::Runtime(String)` from
+`OutboundConnector::connect_tcp`; typed hop/stage/protocol provenance is not
+available. Transport C002 is stopped per its plan rather than parsing
+human-readable strings or copying Eggress routing internals. Reassess after an
+upstream public diagnostic seam is published.
 
 ### CLI C001
 
@@ -105,10 +110,10 @@ They are not sufficient to override the corrective gates registered below.
 
 1. **Foundation C002** and **Release corrective C001** may execute in parallel.
 2. After Foundation C002 closes, execute **Transport corrective C001**.
-3. After Transport C001 closes:
-   - execute **Transport corrective C002**;
-   - execute **CLI corrective C001**. CLI may implement in parallel with Transport C002, but final routed-comparison evidence should reuse the qualified routed fixture where practical.
-4. After Foundation/Transport/CLI/Release correctives close, execute **Release M004** without updater claims unless M003 has independently unblocked.
+3. After Transport C001 closes, CLI C001 may execute independently and is now
+   closed. Transport C002 is stopped pending the published Eggress diagnostic
+   seam described above.
+4. After Foundation/Transport/CLI/Release correctives close, execute **Release M004** without updater claims unless M003 has independently unblocked. Release C001 still needs hosted tag evidence.
 5. **Release M003** remains blocked until a stable shared `eggup` interface exists.
 6. Do not generate Phase 8/9 implementation plans until the platform/datagram ownership prerequisites exist.
 

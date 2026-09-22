@@ -1,5 +1,5 @@
 {
-  "schema_version": "0.1",
+  "schema_version": "0.2",
   "tool": {
     "name": "eggprobe",
     "version": "0.1.0"
@@ -10,8 +10,7 @@
     "port": 443
   },
   "route": {
-    "kind": "eggress",
-    "expression": "<redacted>"
+    "kind": "eggress"
   },
   "status": "failed",
   "probes": [

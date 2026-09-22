@@ -1,6 +1,6 @@
 # CLI Corrective C001 — Batch, Compare, Check, and Exit Correctness
 
-Status: blocked
+Status: closed
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 

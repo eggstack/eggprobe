@@ -8,5 +8,5 @@ fn generated_schemas_are_deterministic_and_redacted() {
     assert_eq!(report, pretty(&report_schema()));
     assert!(plan.contains("ProbePlan"));
     assert!(report.contains("ProbeReport"));
-    assert!(report.contains("expression"));
+    assert!(!report.contains("expression"));
 }

@@ -47,11 +47,8 @@ impl From<&TargetSpec> for TargetSummary {
 pub enum RouteSummary {
     /// Direct access.
     Direct,
-    /// Redacted Eggress route expression.
-    Eggress {
-        /// Safe expression suitable for reports and display.
-        expression: String,
-    },
+    /// An Eggress route was selected; raw route syntax is never report data.
+    Eggress,
 }
 
 /// Overall execution state; child probe states remain independently visible.

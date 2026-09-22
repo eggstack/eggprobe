@@ -8,7 +8,7 @@ use eggprobe_core::{
 
 fn fixture_plan() -> ProbePlan {
     ProbePlan {
-        schema_version: SchemaVersion::INITIAL,
+        schema_version: SchemaVersion::CURRENT,
         target: TargetSpec::new("example.com", Some(443)).expect("fixture target is valid"),
         route: RouteSpec::Eggress(EggressRoute {
             expression: "http://alice:super-secret@example.net:8080?token=fixture-token".into(),
@@ -149,12 +149,7 @@ fn opaque_route_boundary_handles_arbitrary_supported_future_syntax() {
             expression: expression.into(),
         });
         assert_eq!(route.to_string(), "eggress(<redacted>)");
-        assert_eq!(
-            route.summary(),
-            RouteSummary::Eggress {
-                expression: "<redacted>".into(),
-            }
-        );
+        assert_eq!(route.summary(), RouteSummary::Eggress);
         assert!(!format!("{route:?}").contains(expression));
     }
 }
@@ -176,6 +171,72 @@ fn contradictory_http_target_is_rejected_by_plan_validation() {
         plan.validate(),
         Err(eggprobe_core::PlanValidationError::TargetMismatch { .. })
     ));
+}
+
+#[test]
+fn http_authority_normalization_uses_scheme_defaults_and_ipv6() {
+    let mut plan = fixture_plan();
+    plan.target = TargetSpec::new("EXAMPLE.COM", Some(443)).unwrap();
+    plan.probes = vec![ProbeSpec::Http {
+        url: "https://example.com/".into(),
+        method: "GET".into(),
+    }];
+    assert!(plan.validate().is_ok());
+
+    plan.probes = vec![ProbeSpec::Http {
+        url: "http://example.com/".into(),
+        method: "GET".into(),
+    }];
+    assert!(matches!(
+        plan.validate(),
+        Err(eggprobe_core::PlanValidationError::PortMismatch {
+            expected: 443,
+            actual: 80
+        })
+    ));
+
+    plan.target = TargetSpec::new("2001:DB8::1", Some(8443)).unwrap();
+    plan.probes = vec![ProbeSpec::Http {
+        url: "https://[2001:db8::1]:8443/".into(),
+        method: "GET".into(),
+    }];
+    assert!(plan.validate().is_ok());
+}
+
+#[test]
+fn http_authority_rejects_non_http_schemes_and_userinfo() {
+    let mut plan = fixture_plan();
+    for url in [
+        "ftp://example.com/",
+        "https://user@example.com/",
+        "https://user:password@example.com/",
+    ] {
+        plan.probes = vec![ProbeSpec::Http {
+            url: url.into(),
+            method: "GET".into(),
+        }];
+        assert!(matches!(
+            plan.validate(),
+            Err(eggprobe_core::PlanValidationError::InvalidHttpUrl(_))
+        ));
+    }
+}
+
+#[test]
+fn current_reports_have_structurally_secret_free_route_summaries() {
+    let report = ProbeReport::from_plan(
+        &fixture_plan(),
+        ToolProvenance {
+            name: "eggprobe".into(),
+            version: ToolVersion::new("0.1.0").unwrap(),
+        },
+        "structural-route-test",
+        ReportStatus::Ok,
+        vec![],
+    );
+    let value = serde_json::to_value(report).unwrap();
+    assert_eq!(value["route"], serde_json::json!({"kind": "eggress"}));
+    assert!(!value.to_string().contains("expression"));
 }
 
 #[test]
@@ -202,7 +263,7 @@ fn malformed_targets_fail_during_json_deserialization() {
 fn version_and_duration_values_are_explicit_and_distinct() {
     let report = fixture_report();
     let value: serde_json::Value = serde_json::to_value(report).unwrap();
-    assert_eq!(value["schema_version"], "0.1");
+    assert_eq!(value["schema_version"], "0.2");
     assert_eq!(value["tool"]["version"], "0.1.0");
     assert_eq!(value["probes"][0]["timing"]["total"], 1250);
 }

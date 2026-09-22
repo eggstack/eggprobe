@@ -346,6 +346,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-rustls",
+ "url",
  "webpki-roots 0.26.11",
 ]
 

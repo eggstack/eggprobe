@@ -1,6 +1,6 @@
 # Foundation Diagnostic Contract Corrective C002 — Structural Report Safety and Authority Normalization
 
-Status: ready for handoff
+Status: closed
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 

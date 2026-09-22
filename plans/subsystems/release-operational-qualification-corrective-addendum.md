@@ -1,6 +1,6 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 ready for handoff
+Status: active; C001 conditionally closed
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -32,6 +32,8 @@ Closure:
 
 - `plans/closure/release-operational-qualification-corrective/001-status.md`
 
-This plan is dependency-ready and may execute in parallel with Foundation C002.
+This plan was dependency-ready and executed independently of Foundation C002.
+It is conditionally closed pending a hosted dispatch against an existing
+release tag; the repository currently has no tags.
 
 Release M004 remains blocked on this corrective plus the active product-correctness correctives. M003 remains independently blocked on the shared `eggup` interface and is not advertised.

@@ -11,6 +11,7 @@ use eggprobe_core::{
     evaluate_assertions, exit_code, AssertionKind, AssertionSpec, ExecutionPolicy, ProbeEngine,
     ProbePlan, ProbeReport, ProbeSpec, RouteSpec, SchemaVersion, TargetPolicy, TargetSpec,
 };
+use tokio::task::JoinSet;
 
 const MAX_INPUT_BYTES: usize = 4 * 1024 * 1024;
 const MAX_BATCH_SIZE: usize = 256;
@@ -131,6 +132,53 @@ pub struct CompareArgs {
     pub json: bool,
 }
 
+/// A classified CLI failure. Invalid input is distinct from an internal
+/// execution or serialization invariant failure.
+#[derive(Debug)]
+pub enum CliError {
+    /// Invalid invocation, input, or plan.
+    Invalid(String),
+    /// Internal execution, task, or serialization failure.
+    Internal(String),
+}
+
+impl CliError {
+    fn internal(message: impl Into<String>) -> Self {
+        Self::Internal(message.into())
+    }
+
+    /// Return the documented process code for this failure.
+    #[must_use]
+    pub const fn code(&self) -> i32 {
+        match self {
+            Self::Invalid(_) => 2,
+            Self::Internal(_) => 3,
+        }
+    }
+}
+
+impl std::fmt::Display for CliError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Invalid(message) | Self::Internal(message) => formatter.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for CliError {}
+
+impl From<String> for CliError {
+    fn from(message: String) -> Self {
+        Self::Invalid(message)
+    }
+}
+
+impl From<&str> for CliError {
+    fn from(message: &str) -> Self {
+        Self::Invalid(message.into())
+    }
+}
+
 /// Parse the command line.
 #[must_use]
 pub fn parse() -> Cli {
@@ -142,7 +190,7 @@ pub fn parse() -> Cli {
 /// # Errors
 ///
 /// Returns a bounded invocation, plan, or serialization error.
-pub async fn execute(cli: Cli) -> Result<(i32, String), String> {
+pub async fn execute(cli: Cli) -> Result<(i32, String), CliError> {
     let Some(command) = cli.command else {
         return Ok((0, "Run `eggprobe --help` for commands.\n".into()));
     };
@@ -169,7 +217,7 @@ pub async fn execute(cli: Cli) -> Result<(i32, String), String> {
     }
 }
 
-async fn run_single(plan: ProbePlan, json: bool, strict: bool) -> Result<(i32, String), String> {
+async fn run_single(plan: ProbePlan, json: bool, strict: bool) -> Result<(i32, String), CliError> {
     plan.validate().map_err(|error| error.to_string())?;
     let engine = ProbeEngine {
         target_policy: if strict {
@@ -184,7 +232,7 @@ async fn run_single(plan: ProbePlan, json: bool, strict: bool) -> Result<(i32, S
     Ok((exit_code(&report) as i32, render(&report, json)))
 }
 
-async fn run_input(args: RunArgs) -> Result<(i32, String), String> {
+async fn run_input(args: RunArgs) -> Result<(i32, String), CliError> {
     if args.concurrency == 0 || args.concurrency > 64 {
         return Err("concurrency must be between 1 and 64".into());
     }
@@ -198,24 +246,54 @@ async fn run_input(args: RunArgs) -> Result<(i32, String), String> {
         report.findings = evaluate_assertions(&report, &plan.assertions);
         return Ok((exit_code(&report) as i32, render(&report, true)));
     }
-    let mut output = String::new();
+    let indexed = plans.into_iter().enumerate().collect::<Vec<_>>();
+    for (_, plan) in &indexed {
+        plan.validate().map_err(|error| error.to_string())?;
+    }
+    let mut reports = vec![None; indexed.len()];
+    let mut tasks = JoinSet::new();
+    let mut next = 0;
     let mut code = 0;
-    for (index, plan) in plans.into_iter().enumerate() {
-        if args.fail_fast && code != 0 {
-            break;
+    while next < indexed.len() && tasks.len() < args.concurrency {
+        spawn_batch_task(&mut tasks, indexed[next].clone());
+        next += 1;
+    }
+    while let Some(result) = tasks.join_next().await {
+        let (index, report) = result.map_err(|error| CliError::internal(error.to_string()))?;
+        code = combine_exit_codes(code, exit_code(&report) as i32);
+        reports[index] = Some(report);
+        if !(args.fail_fast && code != 0) && next < indexed.len() {
+            spawn_batch_task(&mut tasks, indexed[next].clone());
+            next += 1;
         }
-        let mut report = ProbeEngine::default().execute(plan.clone()).await;
-        report.findings = evaluate_assertions(&report, &plan.assertions);
-        code = code.max(exit_code(&report) as i32);
-        let mut value = serde_json::to_value(&report).map_err(|e| e.to_string())?;
+    }
+    let mut output = String::new();
+    for (index, report) in reports.into_iter().enumerate() {
+        let Some(report) = report else {
+            continue;
+        };
+        let mut value = serde_json::to_value(&report).map_err(|error| {
+            CliError::internal(format!("failed to serialize batch result {index}: {error}"))
+        })?;
         value["execution_id"] = serde_json::Value::String(format!("batch-{index}"));
-        output.push_str(&serde_json::to_string(&value).map_err(|e| e.to_string())?);
+        output.push_str(&serde_json::to_string(&value).map_err(|error| {
+            CliError::internal(format!("failed to serialize batch result {index}: {error}"))
+        })?);
         output.push('\n');
     }
     Ok((code, output))
 }
 
-async fn run_compare(args: CompareArgs) -> Result<(i32, String), String> {
+fn spawn_batch_task(tasks: &mut JoinSet<(usize, ProbeReport)>, item: (usize, ProbePlan)) {
+    tasks.spawn(async move {
+        let (index, plan) = item;
+        let mut report = ProbeEngine::default().execute(plan.clone()).await;
+        report.findings = evaluate_assertions(&report, &plan.assertions);
+        (index, report)
+    });
+}
+
+async fn run_compare(args: CompareArgs) -> Result<(i32, String), CliError> {
     let direct: ProbePlan =
         serde_json::from_str(&read_bounded(&args.direct)?).map_err(|e| e.to_string())?;
     let routed: ProbePlan =
@@ -223,29 +301,56 @@ async fn run_compare(args: CompareArgs) -> Result<(i32, String), String> {
     if args.repeat == 0 || args.repeat > 100 {
         return Err("repeat must be between 1 and 100".into());
     }
-    let mut reports = Vec::new();
+    direct.validate().map_err(|error| error.to_string())?;
+    routed.validate().map_err(|error| error.to_string())?;
+    validate_comparison(&direct, &routed)?;
+    let mut direct_reports = Vec::with_capacity(args.repeat as usize);
+    let mut routed_reports = Vec::with_capacity(args.repeat as usize);
     for _ in 0..args.repeat {
-        reports.push(ProbeEngine::default().execute(direct.clone()).await);
-        reports.push(ProbeEngine::default().execute(routed.clone()).await);
+        direct_reports.push(ProbeEngine::default().execute(direct.clone()).await);
+        routed_reports.push(ProbeEngine::default().execute(routed.clone()).await);
     }
-    let timings: Vec<u64> = reports
+    let direct_stats = statistics(&direct_reports);
+    let routed_stats = statistics(&routed_reports);
+    let delta = comparable_delta(&direct_stats, &routed_stats);
+    let code = direct_reports
         .iter()
-        .flat_map(|report| report.probes.iter())
-        .filter_map(|probe| probe.timing.as_ref().map(|timing| timing.total.as_micros()))
-        .collect();
-    let output = serde_json::json!({"kind":"comparison","repetitions":args.repeat,"connection_policy":"cold","statistics":statistics(&timings),"attempts":reports});
+        .chain(routed_reports.iter())
+        .map(exit_code)
+        .fold(0, |current, next| combine_exit_codes(current, next as i32));
+    let output = serde_json::json!({
+        "kind": "comparison",
+        "repetitions": args.repeat,
+        "connection_policy": "cold",
+        "direct": direct_stats,
+        "routed": routed_stats,
+        "delta": delta,
+        "attempts": {"direct": &direct_reports, "routed": &routed_reports}
+    });
     Ok((
-        0,
+        code,
         if args.json {
-            serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?
+            serde_json::to_string_pretty(&output).map_err(|e| CliError::internal(e.to_string()))?
         } else {
             format!(
-                "comparison repetitions: {}\nattempts: {}\n",
-                args.repeat,
-                args.repeat * 2
+                "comparison repetitions: {}\ndirect: {}\nrouted: {}\n",
+                args.repeat, direct_stats["samples"], routed_stats["samples"]
             )
         },
     ))
+}
+
+fn validate_comparison(direct: &ProbePlan, routed: &ProbePlan) -> Result<(), CliError> {
+    if !matches!(direct.route, RouteSpec::Direct) {
+        return Err("compare direct input must use the direct route".into());
+    }
+    if !matches!(routed.route, RouteSpec::Eggress(_)) {
+        return Err("compare routed input must use an Eggress route".into());
+    }
+    if direct.target != routed.target || direct.probes != routed.probes {
+        return Err("compare inputs must have the same target and probe families".into());
+    }
+    Ok(())
 }
 
 fn parse_plans(text: &str) -> Result<Vec<ProbePlan>, String> {
@@ -308,7 +413,7 @@ fn base(
     assertions: Vec<AssertionSpec>,
 ) -> ProbePlan {
     ProbePlan {
-        schema_version: SchemaVersion::INITIAL,
+        schema_version: SchemaVersion::CURRENT,
         target,
         route,
         probes,
@@ -371,11 +476,25 @@ fn plan_for_proxy(args: &ProxyArgs) -> Result<ProbePlan, String> {
     ))
 }
 fn plan_for_check(args: &CheckArgs) -> Result<ProbePlan, String> {
+    if args.expect_status_min > args.expect_status_max {
+        return Err(format!(
+            "HTTP status assertion minimum {} exceeds maximum {}",
+            args.expect_status_min, args.expect_status_max
+        ));
+    }
     let mut probes = vec![ProbeSpec::Dns, ProbeSpec::Tcp { port: args.port }];
+    let mut assertions = Vec::new();
     if let Some(url) = &args.url {
         probes.push(ProbeSpec::Http {
             url: url.clone(),
             method: "GET".into(),
+        });
+        assertions.push(AssertionSpec {
+            id: "http-status".into(),
+            assertion: AssertionKind::HttpStatusRange {
+                min: args.expect_status_min,
+                max: args.expect_status_max,
+            },
         });
     }
     Ok(base(
@@ -383,13 +502,7 @@ fn plan_for_check(args: &CheckArgs) -> Result<ProbePlan, String> {
         route(args.via.as_deref())?,
         probes,
         args.timeout_ms,
-        vec![AssertionSpec {
-            id: "http-status".into(),
-            assertion: AssertionKind::HttpStatusRange {
-                min: args.expect_status_min,
-                max: args.expect_status_max,
-            },
-        }],
+        assertions,
     ))
 }
 fn parse_url_host(url: &str) -> Result<String, String> {
@@ -419,15 +532,80 @@ fn render(report: &ProbeReport, json: bool) -> String {
     }
 }
 
-fn statistics(values: &[u64]) -> serde_json::Value {
-    if values.is_empty() {
-        return serde_json::json!({"count": 0, "successes": 0, "failures": 0, "unsupported": 0});
+fn statistics(reports: &[ProbeReport]) -> serde_json::Value {
+    let samples: Vec<u64> = reports
+        .iter()
+        .flat_map(|report| report.probes.iter())
+        .filter(|probe| probe.status == eggprobe_core::ProbeStatus::Ok)
+        .filter_map(|probe| probe.timing.as_ref().map(|timing| timing.total.as_micros()))
+        .collect();
+    let successes = reports
+        .iter()
+        .filter(|report| report.status == eggprobe_core::ReportStatus::Ok)
+        .count();
+    let failures = reports
+        .iter()
+        .filter(|report| report.status == eggprobe_core::ReportStatus::Failed)
+        .count();
+    let unsupported = reports
+        .iter()
+        .filter(|report| report.status == eggprobe_core::ReportStatus::Unsupported)
+        .count();
+    if samples.is_empty() {
+        return serde_json::json!({
+            "attempts": reports.len(),
+            "samples": 0,
+            "successes": successes,
+            "failures": failures,
+            "unsupported": unsupported
+        });
     }
-    let mut sorted = values.to_vec();
+    let mut sorted = samples;
     sorted.sort_unstable();
-    let percentile =
-        |percent: usize| sorted[(percent * (sorted.len() - 1) / 100).min(sorted.len() - 1)];
-    serde_json::json!({"count": sorted.len(), "min": sorted[0], "max": sorted[sorted.len() - 1], "median": percentile(50), "p50": percentile(50), "p95": percentile(95)})
+    let percentile = |percent: usize| {
+        let rank = (percent * sorted.len()).div_ceil(100).max(1) - 1;
+        sorted[rank.min(sorted.len() - 1)]
+    };
+    serde_json::json!({
+        "attempts": reports.len(),
+        "samples": sorted.len(),
+        "successes": successes,
+        "failures": failures,
+        "unsupported": unsupported,
+        "min": sorted[0],
+        "max": sorted[sorted.len() - 1],
+        "median": percentile(50),
+        "p50": percentile(50),
+        "p95": percentile(95)
+    })
+}
+
+fn comparable_delta(direct: &serde_json::Value, routed: &serde_json::Value) -> serde_json::Value {
+    match (
+        direct.get("median").and_then(serde_json::Value::as_u64),
+        routed.get("median").and_then(serde_json::Value::as_u64),
+    ) {
+        (Some(direct), Some(routed)) => serde_json::json!({
+            "median_absolute_micros": i128::from(routed) - i128::from(direct),
+            "median_relative": if direct == 0 { serde_json::Value::Null } else {
+                serde_json::json!({
+                    "numerator_micros": i128::from(routed) - i128::from(direct),
+                    "denominator_micros": direct
+                })
+            }
+        }),
+        _ => serde_json::Value::Null,
+    }
+}
+
+fn combine_exit_codes(current: i32, next: i32) -> i32 {
+    match (current, next) {
+        (130, _) | (_, 130) => 130,
+        (3, _) | (_, 3) => 3,
+        (2, _) | (_, 2) => 2,
+        (1, _) | (_, 1) => 1,
+        _ => 0,
+    }
 }
 /// Render a report through the core renderer.
 #[must_use]

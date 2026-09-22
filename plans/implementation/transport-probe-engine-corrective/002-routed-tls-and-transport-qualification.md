@@ -8,7 +8,10 @@ Source addendum:
 
 - `plans/subsystems/transport-probe-engine-corrective-addendum.md#4-c002--routed-tls-and-transport-qualification`
 
-Hard dependency: Transport corrective C001 closed.
+Hard dependency: Transport corrective C001 closed (satisfied). Execution is
+stopped by the published-API provenance stop condition: Eggress 1.0.7 does
+not expose typed hop/stage/protocol failure details through its outbound
+connector.
 
 Primary class: correctness + qualification
 

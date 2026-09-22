@@ -73,17 +73,23 @@ impl ProbeEngine {
             return report;
         }
         let deadline = Duration::from_micros(plan.execution.deadline.as_micros());
-        if let Ok(report) = timeout(deadline, self.execute_inner(&plan)).await {
+        if let Ok(report) = timeout(deadline, self.execute_inner(&plan, execution_id.clone())).await
+        {
             report
         } else {
-            let mut report =
-                ProbeReport::from_plan(&plan, tool, execution_id, ReportStatus::Failed, vec![]);
+            let mut report = ProbeReport::from_plan(
+                &plan,
+                tool,
+                execution_id,
+                ReportStatus::Failed,
+                deadline_results(&plan),
+            );
             report.warnings.push("execution deadline exceeded".into());
             report
         }
     }
 
-    async fn execute_inner(&self, plan: &ProbePlan) -> ProbeReport {
+    async fn execute_inner(&self, plan: &ProbePlan, execution_id: String) -> ProbeReport {
         let repetitions = usize::try_from(plan.execution.repetitions).unwrap_or(usize::MAX);
         let mut results = Vec::with_capacity(plan.probes.len().saturating_mul(repetitions));
         for _ in 0..plan.execution.repetitions {
@@ -100,7 +106,7 @@ impl ProbeEngine {
         } else {
             ReportStatus::Ok
         };
-        ProbeReport::from_plan(plan, tool(), execution_id(), status, results)
+        ProbeReport::from_plan(plan, tool(), execution_id, status, results)
     }
 
     async fn execute_probe(&self, plan: &ProbePlan, spec: &ProbeSpec) -> ProbeResult {
@@ -165,36 +171,7 @@ impl ProbeEngine {
         host: &str,
         port: u16,
     ) -> Result<Vec<std::net::SocketAddr>, DiagnosticError> {
-        if let Ok(ip) = host.parse::<IpAddr>() {
-            if self.target_policy == TargetPolicy::Strict && is_private(ip) {
-                return Err(policy_error());
-            }
-            return Ok(vec![std::net::SocketAddr::new(ip, port)]);
-        }
-        let results = lookup_host((host, port))
-            .await
-            .map_err(|error| DiagnosticError {
-                kind: DiagnosticErrorKind::Dns,
-                stage: DiagnosticStage::Resolution,
-                message: safe_io_message(&error),
-                attempt: None,
-            })?;
-        let mut addresses = Vec::new();
-        for address in results.take(MAX_DNS_ANSWERS) {
-            if self.target_policy == TargetPolicy::Strict && is_private(address.ip()) {
-                return Err(policy_error());
-            }
-            addresses.push(address);
-        }
-        if addresses.is_empty() {
-            return Err(DiagnosticError {
-                kind: DiagnosticErrorKind::Dns,
-                stage: DiagnosticStage::Resolution,
-                message: "no addresses returned".into(),
-                attempt: None,
-            });
-        }
-        Ok(addresses)
+        resolve_addresses(self.target_policy, host, port).await
     }
 
     async fn dns(&self, plan: &ProbePlan) -> Result<ProbeEvidence, DiagnosticError> {
@@ -238,10 +215,11 @@ impl ProbeEngine {
             let result = TcpStream::connect(address).await;
             match result {
                 Ok(stream) => {
+                    let local = stream.local_addr().ok().map(|address| address.to_string());
                     drop(stream);
                     return Ok(ProbeEvidence::Tcp(TcpEvidence {
                         peer: Some(address.to_string()),
-                        local: None,
+                        local,
                         attempts: u32::try_from(attempt + 1).unwrap_or(u32::MAX),
                     }));
                 }
@@ -323,16 +301,23 @@ impl ProbeEngine {
         let mut builder = eggfetch_core::Client::builder()
             .automatic_decompression(false)
             .max_decoded_body_size(MAX_BODY_SAMPLE);
-        if let RouteSpec::Eggress(route) = &plan.route {
-            builder = builder.dialer(RouteDialer {
-                connector: Arc::new(egress_connector(&route.expression).map_err(|()| {
-                    simple_error(
-                        DiagnosticErrorKind::Protocol,
-                        DiagnosticStage::HopHandshake,
-                        "invalid or unsupported Eggress route",
-                    )
-                })?),
-            });
+        match &plan.route {
+            RouteSpec::Direct => {
+                builder = builder.dialer(PolicyDialer {
+                    target_policy: self.target_policy,
+                });
+            }
+            RouteSpec::Eggress(route) => {
+                builder = builder.dialer(RouteDialer {
+                    connector: Arc::new(egress_connector(&route.expression).map_err(|()| {
+                        simple_error(
+                            DiagnosticErrorKind::Protocol,
+                            DiagnosticStage::HopHandshake,
+                            "invalid or unsupported Eggress route",
+                        )
+                    })?),
+                });
+            }
         }
         let client = builder.build();
         let request = client.request(method, url).map_err(|_| {
@@ -342,25 +327,10 @@ impl ProbeEngine {
                 "invalid HTTP URL",
             )
         })?;
-        let mut response = timeout(
-            Duration::from_micros(plan.execution.deadline.as_micros()),
-            request.send(),
-        )
-        .await
-        .map_err(|_| {
-            simple_error(
-                DiagnosticErrorKind::Timeout,
-                DiagnosticStage::Deadline,
-                "HTTP deadline exceeded",
-            )
-        })?
-        .map_err(|_| {
-            simple_error(
-                DiagnosticErrorKind::Other,
-                DiagnosticStage::ResponseHeaders,
-                "Eggfetch request failed",
-            )
-        })?;
+        let mut response = request
+            .send_detailed()
+            .await
+            .map_err(|failure| normalize_http_failure(&failure))?;
         let status = response.status().as_u16();
         let protocol = Some(format!("{:?}", response.version()));
         let body = response.bytes().await.map_err(|_| {
@@ -411,6 +381,41 @@ where
             .negotiated_cipher_suite()
             .map(|v| format!("{v:?}")),
     }))
+}
+
+#[derive(Clone)]
+struct PolicyDialer {
+    target_policy: TargetPolicy,
+}
+
+impl Dialer for PolicyDialer {
+    fn dial(&self, target: DialTarget) -> DialFuture<'_> {
+        Box::pin(async move {
+            let addresses = resolve_addresses(self.target_policy, target.host(), target.port())
+                .await
+                .map_err(|error| {
+                    let kind = if error.kind == DiagnosticErrorKind::Policy {
+                        DialErrorKind::Rejected
+                    } else {
+                        DialErrorKind::Other
+                    };
+                    DialError::new(kind, dial_error_message(&error))
+                })?;
+            let mut last = None;
+            for address in addresses {
+                match TcpStream::connect(address).await {
+                    Ok(stream) => return Ok(Box::new(stream) as DialStream),
+                    Err(error) => last = Some(error),
+                }
+            }
+            let error = last.expect("resolve_addresses returns at least one address");
+            Err(DialError::with_source(
+                DialErrorKind::Connection,
+                safe_io_message(&error),
+                error,
+            ))
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -469,6 +474,165 @@ impl AsyncWrite for EgressStream {
 fn egress_connector(expression: &str) -> Result<eggress_embed::outbound::OutboundConnector, ()> {
     eggress_embed::outbound::OutboundConnector::from_pproxy_uri(expression).map_err(|_| ())
 }
+
+async fn resolve_addresses(
+    target_policy: TargetPolicy,
+    host: &str,
+    port: u16,
+) -> Result<Vec<std::net::SocketAddr>, DiagnosticError> {
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        if target_policy == TargetPolicy::Strict && is_private(ip) {
+            return Err(policy_error());
+        }
+        return Ok(vec![std::net::SocketAddr::new(ip, port)]);
+    }
+    let results = lookup_host((host, port))
+        .await
+        .map_err(|error| DiagnosticError {
+            kind: DiagnosticErrorKind::Dns,
+            stage: DiagnosticStage::Resolution,
+            message: safe_io_message(&error),
+            attempt: None,
+        })?;
+    let mut addresses = Vec::new();
+    for address in results.take(MAX_DNS_ANSWERS) {
+        if target_policy == TargetPolicy::Strict && is_private(address.ip()) {
+            return Err(policy_error());
+        }
+        addresses.push(address);
+    }
+    if addresses.is_empty() {
+        return Err(DiagnosticError {
+            kind: DiagnosticErrorKind::Dns,
+            stage: DiagnosticStage::Resolution,
+            message: "no addresses returned".into(),
+            attempt: None,
+        });
+    }
+    Ok(addresses)
+}
+
+fn dial_error_message(error: &DiagnosticError) -> String {
+    match error.kind {
+        DiagnosticErrorKind::Policy => "target rejected by policy".into(),
+        DiagnosticErrorKind::Dns => "DNS resolution failed".into(),
+        _ => "direct connection failed".into(),
+    }
+}
+
+fn deadline_results(plan: &ProbePlan) -> Vec<ProbeResult> {
+    plan.probes
+        .iter()
+        .map(|spec| ProbeResult {
+            kind: match spec {
+                ProbeSpec::Dns => ProbeKind::Dns,
+                ProbeSpec::Tcp { .. } => ProbeKind::Tcp,
+                ProbeSpec::Tls { .. } => ProbeKind::Tls,
+                ProbeSpec::Http { .. } => ProbeKind::Http,
+            },
+            status: ProbeStatus::Failed,
+            timing: None,
+            error: Some(simple_error(
+                DiagnosticErrorKind::Timeout,
+                DiagnosticStage::Deadline,
+                "execution deadline exceeded",
+            )),
+            evidence: None,
+            unavailable: vec![],
+            findings: vec![],
+        })
+        .collect()
+}
+
+fn normalize_http_failure(failure: &eggfetch_core::RequestFailure) -> DiagnosticError {
+    if failure.is_timeout() {
+        return simple_error(
+            DiagnosticErrorKind::Timeout,
+            DiagnosticStage::Deadline,
+            "HTTP deadline exceeded",
+        );
+    }
+    if let Some(kind) = failure.network_failure_kind() {
+        return match kind {
+            eggfetch_core::NetworkFailureKind::Dns => simple_error(
+                DiagnosticErrorKind::Dns,
+                DiagnosticStage::Resolution,
+                "DNS resolution failed",
+            ),
+            eggfetch_core::NetworkFailureKind::ConnectionRefused => simple_error(
+                DiagnosticErrorKind::ConnectionRefused,
+                DiagnosticStage::DirectConnect,
+                "connection refused",
+            ),
+            _ => simple_error(
+                DiagnosticErrorKind::Io,
+                DiagnosticStage::DirectConnect,
+                "direct connection failed",
+            ),
+        };
+    }
+    if let Some(error) = failure.error().custom_transport_error() {
+        return match error.kind() {
+            DialErrorKind::Rejected => simple_error(
+                DiagnosticErrorKind::Policy,
+                DiagnosticStage::Resolution,
+                "target rejected by policy",
+            ),
+            DialErrorKind::Timeout => simple_error(
+                DiagnosticErrorKind::Timeout,
+                DiagnosticStage::DirectConnect,
+                "direct connection timed out",
+            ),
+            DialErrorKind::Authentication => simple_error(
+                DiagnosticErrorKind::Authentication,
+                DiagnosticStage::DirectConnect,
+                "direct connection authentication failed",
+            ),
+            DialErrorKind::Connection => simple_error(
+                DiagnosticErrorKind::Io,
+                DiagnosticStage::DirectConnect,
+                "direct connection failed",
+            ),
+            DialErrorKind::Other => simple_error(
+                DiagnosticErrorKind::Other,
+                DiagnosticStage::DirectConnect,
+                "direct connection failed",
+            ),
+        };
+    }
+    match failure.error().kind() {
+        "tls" | "certificate_verification" | "hostname_verification" => simple_error(
+            DiagnosticErrorKind::Tls,
+            DiagnosticStage::TlsHandshake,
+            "TLS handshake failed",
+        ),
+        "protocol" | "http2_protocol" | "h3_protocol" => simple_error(
+            DiagnosticErrorKind::Protocol,
+            DiagnosticStage::ResponseHeaders,
+            "HTTP protocol exchange failed",
+        ),
+        "invalid_url" | "invalid_method" | "request_build" => simple_error(
+            DiagnosticErrorKind::Protocol,
+            DiagnosticStage::Request,
+            "invalid HTTP request",
+        ),
+        "connect" | "io" => simple_error(
+            DiagnosticErrorKind::Io,
+            DiagnosticStage::DirectConnect,
+            "direct connection failed",
+        ),
+        "unsupported" => simple_error(
+            DiagnosticErrorKind::Unsupported,
+            DiagnosticStage::Request,
+            "HTTP operation unsupported",
+        ),
+        _ => simple_error(
+            DiagnosticErrorKind::Other,
+            DiagnosticStage::ResponseHeaders,
+            "HTTP request failed",
+        ),
+    }
+}
 fn tool() -> ToolProvenance {
     ToolProvenance {
         name: "eggprobe".into(),
@@ -501,6 +665,8 @@ fn normalize_io(
     let kind = match error.kind() {
         std::io::ErrorKind::ConnectionRefused => DiagnosticErrorKind::ConnectionRefused,
         std::io::ErrorKind::TimedOut => DiagnosticErrorKind::Timeout,
+        std::io::ErrorKind::NetworkUnreachable => DiagnosticErrorKind::NetworkUnreachable,
+        std::io::ErrorKind::HostUnreachable => DiagnosticErrorKind::HostUnreachable,
         _ => DiagnosticErrorKind::Io,
     };
     DiagnosticError {

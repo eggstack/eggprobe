@@ -29,8 +29,11 @@ impl JsonSchema for SchemaVersion {
 }
 
 impl SchemaVersion {
-    /// The initial contract version used by the foundation milestone.
+    /// The historical contract version retained for compatibility fixtures.
     pub const INITIAL: Self = Self { major: 0, minor: 1 };
+
+    /// The current contract version used by the active binary.
+    pub const CURRENT: Self = Self { major: 0, minor: 2 };
 }
 
 impl fmt::Display for SchemaVersion {

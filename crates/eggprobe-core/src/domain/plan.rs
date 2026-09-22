@@ -5,6 +5,7 @@ use std::net::IpAddr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use url::Url;
 
 use super::{route::RouteSpec, target::TargetSpec, timing::DurationMicros, version::SchemaVersion};
 
@@ -36,7 +37,7 @@ impl ProbePlan {
     /// Returns a [`PlanValidationError`] when the schema, limits, or target
     /// authority is invalid.
     pub fn validate(&self) -> Result<(), PlanValidationError> {
-        if self.schema_version != SchemaVersion::INITIAL {
+        if self.schema_version != SchemaVersion::CURRENT {
             return Err(PlanValidationError::UnsupportedSchema(self.schema_version));
         }
         if self.execution.deadline.as_micros() == 0 {
@@ -45,20 +46,36 @@ impl ProbePlan {
         if self.execution.repetitions == 0 {
             return Err(PlanValidationError::ZeroRepetitions);
         }
+        if self.execution.retries > 0 {
+            return Err(PlanValidationError::UnsupportedRetries(
+                self.execution.retries,
+            ));
+        }
+        for assertion in &self.assertions {
+            if let AssertionKind::HttpStatusRange { min, max } = &assertion.assertion {
+                if min > max {
+                    return Err(PlanValidationError::InvalidAssertionRange {
+                        min: *min,
+                        max: *max,
+                    });
+                }
+            }
+        }
         for probe in &self.probes {
             match probe {
                 ProbeSpec::Tcp { port } | ProbeSpec::Tls { port, .. } if *port == 0 => {
                     return Err(PlanValidationError::InvalidPort);
                 }
                 ProbeSpec::Http { url, .. } => {
-                    let (host, port) = http_authority(url)?;
-                    if host != self.target.host {
+                    let authority = HttpAuthority::parse(url)?;
+                    if !same_host(&authority.host, &self.target.host) {
                         return Err(PlanValidationError::TargetMismatch {
                             expected: self.target.host.clone(),
-                            actual: host,
+                            actual: authority.host,
                         });
                     }
-                    if let (Some(expected), Some(actual)) = (self.target.port, port) {
+                    if let Some(expected) = self.target.port {
+                        let actual = authority.port;
                         if expected != actual {
                             return Err(PlanValidationError::PortMismatch { expected, actual });
                         }
@@ -83,6 +100,17 @@ pub enum PlanValidationError {
     /// At least one execution is required.
     #[error("execution repetitions must be greater than zero")]
     ZeroRepetitions,
+    /// Retries are reserved for a future explicit attempt contract.
+    #[error("retries are not supported by schema 0.2 (requested {0})")]
+    UnsupportedRetries(u32),
+    /// An inclusive HTTP assertion range cannot have its lower bound above its upper bound.
+    #[error("HTTP status assertion minimum {min} exceeds maximum {max}")]
+    InvalidAssertionRange {
+        /// Inclusive lower status bound.
+        min: u16,
+        /// Inclusive upper status bound.
+        max: u16,
+    },
     /// A port-oriented probe cannot use port zero.
     #[error("probe port must be between 1 and 65535")]
     InvalidPort,
@@ -107,27 +135,45 @@ pub enum PlanValidationError {
     InvalidHttpUrl(String),
 }
 
-fn http_authority(url: &str) -> Result<(String, Option<u16>), PlanValidationError> {
-    let scheme_end = url
-        .find("://")
-        .ok_or_else(|| PlanValidationError::InvalidHttpUrl(url.into()))?;
-    let authority = url[scheme_end + 3..]
-        .split(['/', '?', '#'])
-        .next()
-        .unwrap_or_default();
-    if authority.is_empty() || authority.contains('@') {
-        return Err(PlanValidationError::InvalidHttpUrl(url.into()));
+struct HttpAuthority {
+    host: String,
+    port: u16,
+}
+
+impl HttpAuthority {
+    fn parse(raw: &str) -> Result<Self, PlanValidationError> {
+        let url =
+            Url::parse(raw).map_err(|_| PlanValidationError::InvalidHttpUrl(raw.to_owned()))?;
+        let default_port = match url.scheme() {
+            "http" => 80,
+            "https" => 443,
+            _ => return Err(PlanValidationError::InvalidHttpUrl(raw.to_owned())),
+        };
+        if !url.username().is_empty() || url.password().is_some() {
+            return Err(PlanValidationError::InvalidHttpUrl(raw.to_owned()));
+        }
+        let host = url
+            .host_str()
+            .filter(|host| !host.is_empty())
+            .ok_or_else(|| PlanValidationError::InvalidHttpUrl(raw.to_owned()))?
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .to_owned();
+        let port = url.port().unwrap_or(default_port);
+        if port == 0 {
+            return Err(PlanValidationError::InvalidHttpUrl(raw.to_owned()));
+        }
+        Ok(Self { host, port })
     }
-    if let Ok(ip) = authority.parse::<IpAddr>() {
-        return Ok((ip.to_string(), None));
+}
+
+fn same_host(left: &str, right: &str) -> bool {
+    match (left.parse::<IpAddr>(), right.parse::<IpAddr>()) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => left
+            .trim_end_matches('.')
+            .eq_ignore_ascii_case(right.trim_end_matches('.')),
     }
-    if let Some((host, port)) = authority.rsplit_once(':') {
-        let parsed = port
-            .parse()
-            .map_err(|_| PlanValidationError::InvalidHttpUrl(url.into()))?;
-        return Ok((host.to_owned(), Some(parsed)));
-    }
-    Ok((authority.to_owned(), None))
 }
 
 /// A probe request with no execution implementation in the foundation milestone.

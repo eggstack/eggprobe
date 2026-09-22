@@ -22,9 +22,7 @@ impl RouteSpec {
     pub fn summary(&self) -> crate::RouteSummary {
         match self {
             Self::Direct => crate::RouteSummary::Direct,
-            Self::Eggress(_route) => crate::RouteSummary::Eggress {
-                expression: "<redacted>".to_owned(),
-            },
+            Self::Eggress(_route) => crate::RouteSummary::Eggress,
         }
     }
 }

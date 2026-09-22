@@ -29,18 +29,23 @@ classify them as a failed expectation without erasing the response evidence.
 
 `eggprobe run plan.json` emits one full JSON report. `eggprobe run - --ndjson`
 reads stdin and emits one independently parseable final record per batch plan.
-Input is bounded to 4 MiB and batches to 256 plans. Logs and diagnostics go to
-stderr; stdout is machine data only when `--json` or `--ndjson` is selected.
+`--concurrency` bounds active plan executions and output remains in input order;
+`--fail-fast` stops admitting new plans after the first negative result while
+awaiting work already started. Input is bounded to 4 MiB and batches to 256
+plans. Logs and diagnostics go to stderr; stdout is machine data only when
+`--json` or `--ndjson` is selected.
 
-The checked-in schemas under `schemas/` describe the pre-1 contract. Rust types
-remain authoritative, and additive evolution is permitted only when optional
-and redaction-safe.
+The checked-in `schemas/*-0.2.json` files describe the active contract. The
+`*-0.1.json` files are retained historical evidence; the binary rejects 0.1
+plans rather than silently reinterpreting them. Rust types remain authoritative,
+and additive evolution is permitted only when optional and redaction-safe.
 
 ## Routes and privacy
 
 Pass Eggress route expressions with `--via` or in a plan's `route` field.
-Credentials are accepted only as input and are represented as
-`eggress(<redacted>)`/`<redacted>` in output, debug text, and human display.
+Credentials are accepted only as input. Reports contain only the structural
+route marker `{"kind":"eggress"}`; debug and human output use
+`eggress(<redacted>)`.
 Eggress owns route parsing and hop protocol semantics. Eggprobe does not use
 environment proxy variables or silently fall back to a direct connection.
 
@@ -57,3 +62,8 @@ environment proxy variables or silently fall back to a direct connection.
 
 The shared Eggstack `eggup` interface is not yet published. Do not use an
 unverified download or replacement script as an automatic updater.
+
+`compare` requires a direct first plan and routed second plan with matching
+target/probe families. It reports separate direct and routed distributions.
+Latency percentiles use nearest-rank on successful probe timings only:
+`ceil(p*N/100)`, clamped to the first sample.

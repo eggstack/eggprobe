@@ -1,6 +1,6 @@
 # Transport Corrective C001 — Policy, Deadline, Retry, and Error Semantics
 
-Status: blocked
+Status: closed
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 

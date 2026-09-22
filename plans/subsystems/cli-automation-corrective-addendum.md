@@ -1,6 +1,6 @@
 # CLI and Automation — Post-Closure Corrective Addendum
 
-Status: active; C001 blocked on Foundation C002 + Transport C001
+Status: active; C001 closed
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
