@@ -1,10 +1,12 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 conditionally closed; C002 closed; C003 closed
+Status: active; C001 conditionally closed/on hold; C002 closed; C003 closed historically; C004 ready
 
 Historical planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
-Current corrective evidence baseline: `cf857fc24579263611396d4d88a1ef622601d612`
+C003 planning baseline: `cf857fc24579263611396d4d88a1ef622601d612`
+
+Current corrective evidence baseline: `23da04ec32d3981aa0cb899d4d5b1d120e66f75e`
 
 Historical evidence:
 
@@ -97,23 +99,55 @@ Status: closed. Closure evidence:
 
 - `plans/closure/release-operational-qualification-corrective/003-status.md`
 
-C003 was a hard first-release gate; it is intentionally local to Eggprobe and
-introduced no Eggpack producer integration or Eggup self-update. The
-cross-platform CI barrier it repaired (Windows CRLF fixtures + audit-tool
-bootstrap under the product MSRV) is now removed: canonical JSON
-fixtures/schemas are LF-locked via `.gitattributes`, and the `audit` job is
-rewritten around an explicit stable toolchain, a pinned `cargo-audit`
-install, and `cargo +stable audit`. The next required action is C001's
-valid-tag hosted artifact evidence; M004 remains blocked only on that gate.
+C003 remains closed for the two defects it actually corrected. A later hosted
+run discovered an additional Windows-only engine test failure after the CRLF
+tests had passed, so C003's historical closure is retained and the new finding
+is handled by C004 rather than rewriting C003 evidence.
 
-## 5. Downstream disposition
+## 5. C004 — Windows HTTP fixture and hosted CI requalification
+
+Hosted run `36008924756` on closure commit
+`23da04ec32d3981aa0cb899d4d5b1d120e66f75e` provides the new evidence:
+
+- Ubuntu quality job `107664241772` — green;
+- macOS quality job `107664241926` — green;
+- MSRV job `107664241902` — green;
+- dependency audit job `107664241849` — green and completes the actual
+  Eggprobe lockfile audit;
+- Windows job `107664241734` — the C003 deterministic contract tests are
+  green, but `http_status_is_observed_even_when_assertion_fails` fails later
+  in `tests/engine.rs` because the report is `Failed` rather than the
+  expected `Ok`.
+
+The local HTTP fixture accepts a connection, writes a 503 response, and then
+drops the stream without first consuming the request or explicitly flushing /
+shutting down. That is a plausible Windows socket-lifecycle portability
+failure, but C004 MUST prove the failure boundary before changing production
+semantics.
+
+Implementation:
+
+- `plans/implementation/release-operational-qualification-corrective/004-windows-http-fixture-and-hosted-ci-requalification.md`
+
+Closure target:
+
+- `plans/closure/release-operational-qualification-corrective/004-status.md`
+
+Status: ready for handoff.
+
+C004 is now the immediate first-release gate. It does not create a release tag
+and does not adopt Eggpack or Eggup.
+
+## 6. Downstream disposition
 
 - Historical M003 is superseded by M003a/M003b under ADR-0002.
 - M003a Eggpack producer integration is deferred and not a first-release gate.
 - M003b Eggup runtime self-update is optional/deferred and not a first-release gate.
-- C003 is closed; the cross-platform CI barrier is removed.
-- The next required action is C001's remaining valid-tag hosted artifact
-  evidence, which promotes M002 to operationally qualified.
+- C003 remains historical closure evidence for the CRLF/audit findings it
+  corrected; C004 owns the later Windows HTTP finding.
+- Execute and close C004 before creating/using the first release tag.
+- After C004 closes, resume C001's remaining valid-tag hosted artifact evidence,
+  which promotes M002 to operationally qualified.
 - Release M004 then becomes ready for the first standalone archive release.
 - Eggpack/Eggup instability does not block this sequence and must not be worked
   around by copying their producer/consumer responsibilities into Eggprobe.
