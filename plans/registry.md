@@ -107,6 +107,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Release corrective | C006 routed-path CryptoProvider installation | closed | `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md` | Fix at `fa8ad7c`; hosted run `36038995837` green; closure `plans/closure/release-operational-qualification-corrective/006-status.md` |
 | Native path/host diagnostics | M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | Schema 0.4 and `eggprobe-native` closed; `plans/closure/native-path-host-diagnostics/001-status.md` |
 | Native path/host diagnostics | M002 target route/interface/egress MTU | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | Target-scoped route/interface/source/MTU evidence closed; `plans/closure/native-path-host-diagnostics/002-status.md` |
+| Native path/host diagnostics corrective | C001 planning/documentation and execution realignment | ready | `plans/implementation/native-path-host-diagnostics-corrective/001-planning-documentation-and-execution-realignment.md` | Reconcile registry/docs after M001/M002 closure; remove artificial M003→M004 sequencing hold |
 | Native path/host diagnostics | M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001 is closed and M002 source/interface route seam is available; held behind sequential M003 assessment |
 
 ## Operational evidence gate (M004 closed)
@@ -208,11 +209,12 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
    and the Eggpack->Eggup consumer seam is stable.
 6. ~~Execute **Native M001**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/001-status.md`.
 7. ~~Execute **Native M002**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/002-status.md`.
-8. Stop before **Native M003**: the reviewed ICMP dependencies do not meet required evidence and error semantics. Resume only after a safe backend or accepted upstream interface is qualified.
-9. M004 is ready after M001/M002 closure, but remains unexecuted until the sequential M003 blocker is resolved.
-10. Keep M005 blocked until a tracer backend preserves silent per-attempt evidence without default reverse DNS or unacceptable duplicate dependencies.
-11. Execute M006 only after the route/UDP/path test seams it depends on are closure-backed and trustworthy PMTU feedback is available.
-9. Keep routed datagram/QUIC work in Phase 9; do not reuse the byte-stream Eggress route contract for Phase 8.
+8. Execute **Native corrective C001** before the next capability handoff: reconcile planning/docs, release identity, and M003/M004 sequencing.
+9. After C001, **Native M004** may execute independently while M003 ICMP backend/upstream research continues in parallel.
+10. **Native M003** remains blocked until a safe backend or accepted upstream interface is qualified.
+11. Keep M005 blocked until a tracer backend preserves silent per-attempt evidence without default reverse DNS or unacceptable duplicate dependencies.
+12. Execute M006 only after the route/UDP/path test seams it depends on are closure-backed and trustworthy PMTU feedback is available.
+13. Keep routed datagram/QUIC work in Phase 9; do not reuse the byte-stream Eggress route contract for Phase 8.
 
 ## Shared infrastructure baselines
 

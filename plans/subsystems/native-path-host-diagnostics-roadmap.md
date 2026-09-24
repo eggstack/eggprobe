@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001/M002 closed, M003 blocked, M004 ready, M005/M006 blocked
+Status: active planning; M001/M002 closed, corrective C001 ready, M003 blocked, M004 ready, M005/M006 blocked
 
 Long-term references:
 
@@ -195,6 +195,16 @@ Live public traces are exploratory only.
 - PMTU APIs are platform-specific;
 - safe dependencies may not expose enough detail;
 - future routed UDP requires a datagram-specific composition contract.
+
+## 10.1 Post-closure corrective
+
+### C001 — Planning, documentation, and execution realignment
+
+Status: ready.
+
+Plan: `plans/implementation/native-path-host-diagnostics-corrective/001-planning-documentation-and-execution-realignment.md`
+
+This corrective reconciles the registry and user-facing documentation after M001/M002 closure. It does not reopen their production behavior. It specifically removes the accidental serialization of M004 behind blocked M003: after M001, ICMP research and direct UDP are independent branches.
 
 ## 11. Completion definition
 
