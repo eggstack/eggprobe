@@ -1,6 +1,6 @@
 # Release and Operational Qualification Corrective C006 — Routed-Path CryptoProvider Installation
 
-Status: ready for handoff
+Status: closed at `fa8ad7c` — see `plans/closure/release-operational-qualification-corrective/006-status.md` (hosted run `36038995837` fully green; M004 handed back ready)
 
 Planning baseline: `25dc692c7e61129fe6398644c6e41f4692e33bb2`
 

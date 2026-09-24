@@ -1,6 +1,6 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: blocked — M004 execution at `25dc692` stopped on a routed-path product defect (shipped binary panics without a process-default rustls CryptoProvider; see C006 plan). Partial verification evidence (direct probes, schema, audit) retained for resumption.
+Status: ready — C006 closed (`plans/closure/release-operational-qualification-corrective/006-status.md`: routed panic fixed, hosted run `36038995837` fully green). Resumption owns the version/tag disposition for the fixed tree (`v0.1.0` artifacts predate the fix).
 
 Planning baseline: historical `e55a21fe73915b7a38c2fa674807354539806c60`; refresh at execution against current release artifacts.
 
