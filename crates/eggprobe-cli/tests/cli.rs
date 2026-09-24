@@ -22,7 +22,7 @@ fn version_is_available() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8(output.stdout).unwrap().trim(),
-        "eggprobe 0.1.0"
+        format!("eggprobe {}", env!("CARGO_PKG_VERSION"))
     );
 }
 

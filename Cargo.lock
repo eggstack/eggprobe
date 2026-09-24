@@ -346,7 +346,7 @@ dependencies = [
 
 [[package]]
 name = "eggprobe-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "eggprobe-core",
@@ -357,7 +357,7 @@ dependencies = [
 
 [[package]]
 name = "eggprobe-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "eggfetch-core",
  "eggress-core",
