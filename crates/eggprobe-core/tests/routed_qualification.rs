@@ -148,23 +148,38 @@ async fn routed_tcp_uses_egress_connector_without_fallback() {
 #[tokio::test]
 async fn routed_hop_connect_error_keeps_typed_stage_and_never_dials_target_directly() {
     install_crypto_provider();
-    let hop_port = closed_port().await;
     let target = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let target_port = target.local_addr().unwrap().port();
-    let report = ProbeEngine::default()
-        .execute(plan(
+    // A dropped port returns to the pool immediately, so a parallel fixture
+    // on a loaded runner can claim it between drop and dial. A stolen port
+    // accepts the SYN and then stalls the proxy handshake (surfacing as a
+    // timeout or handshake error) instead of refusing. Retry with a fresh
+    // dropped port so the outcome is deterministic: only a genuine refusal
+    // is accepted, and repeated theft panics with the last error attached.
+    let mut attempts = 0;
+    loop {
+        attempts += 1;
+        let hop_port = closed_port().await;
+        let mut diagnostic_plan = plan(
             "127.0.0.1",
             Some(target_port),
             &format!("http://127.0.0.1:{hop_port}"),
             vec![ProbeSpec::Tcp { port: target_port }],
-        ))
-        .await;
-
-    let error = report.probes[0].error.as_ref().unwrap();
-    assert_eq!(error.kind, DiagnosticErrorKind::ConnectionRefused);
-    assert_eq!(error.stage, DiagnosticStage::HopConnect);
-    assert_eq!(error.route_hop_index, Some(0));
-    assert_eq!(error.route_protocol, None);
+        );
+        diagnostic_plan.execution.deadline = DurationMicros::from_micros(500_000);
+        let report = ProbeEngine::default().execute(diagnostic_plan).await;
+        let error = report.probes[0].error.as_ref().unwrap();
+        if error.kind == DiagnosticErrorKind::ConnectionRefused {
+            assert_eq!(error.stage, DiagnosticStage::HopConnect, "{error:?}");
+            assert_eq!(error.route_hop_index, Some(0));
+            assert_eq!(error.route_protocol, None);
+            break;
+        }
+        assert!(
+            attempts < 10,
+            "hop port claimed by a parallel fixture {attempts} times in a row: {error:?}"
+        );
+    }
     assert!(
         tokio::time::timeout(Duration::from_millis(80), target.accept())
             .await
