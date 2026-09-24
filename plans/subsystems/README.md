@@ -26,3 +26,7 @@ Every subsystem roadmap should contain:
 12. milestone-status table.
 
 Roadmaps MUST link canonical long-term requirements rather than duplicate them wholesale, preserve completed history, and link active milestones to implementation plans and later closure records.
+
+## Current capability-expansion roadmap
+
+- `native-path-host-diagnostics-roadmap.md` — Phase 8 target-scoped route/interface, ICMP, direct UDP, traceroute, and PMTU work; M001 is the current dependency-ready handoff.

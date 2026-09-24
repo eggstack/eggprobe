@@ -12,6 +12,7 @@ implementation plans, closure records, corrective addenda, and Git history.
 - `plans/003-planning-process.md`
 - `plans/adrs/ADR-0001-json-first-core-and-transport-ownership.md`
 - `plans/adrs/ADR-0002-release-producer-consumer-ownership.md`
+- `plans/adrs/ADR-0003-native-diagnostics-platform-and-subject-boundary.md`
 
 ## Status vocabulary
 
@@ -95,7 +96,8 @@ post-closure findings have been handled by the registered corrective sequence.
 | Release/packaging | active | M004 closed (first standalone release qualified as 0.1.1); C001–C006 closed; M002 operationally qualified | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
-| Native path + QUIC/H3 expansion | roadmap-level | no implementation handoff | Phase 8/9 prerequisites unresolved |
+| Native path/host diagnostics | active planning | M001 ready; M002-M006 dependency-ordered | `plans/subsystems/native-path-host-diagnostics-roadmap.md` |
+| QUIC/H3 expansion | roadmap-level | routed datagram composition remains separate from Phase 8 | Phase 9 prerequisites unresolved |
 
 ## Dependency-ready work
 
@@ -103,6 +105,7 @@ post-closure findings have been handled by the registered corrective sequence.
 |---|---|---|---|---|
 | Release corrective | C005 first-release tag and hosted packaging qualification | closed | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | Tag `v0.1.0` at `2760b8b`; hosted packaging run `36030784594` fully green; closure `plans/closure/release-operational-qualification-corrective/005-status.md` |
 | Release corrective | C006 routed-path CryptoProvider installation | closed | `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md` | Fix at `fa8ad7c`; hosted run `36038995837` green; closure `plans/closure/release-operational-qualification-corrective/006-status.md` |
+| Native path/host diagnostics | M001 native contract/platform substrate | ready | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | Advance to schema 0.4, introduce `eggprobe-native`, qualify safe dependencies/MSRV, establish direct-only native capability semantics |
 
 ## Operational evidence gate (M004 closed)
 
@@ -141,6 +144,11 @@ adoption.
 | Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | Current Eggpack HEAD `154d4a2` still has Manifest M002, Build/Qualification M001, and Bootstrap M001 ready but not closed; selected interfaces must be closure-backed |
 | Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | Current Eggpack HEAD `154d4a2` has interop M001 ready but not closed; Eggup HEAD `8937ad0` still gates adapter implementation on that closure; product decision also required |
 | Release qualification | M004 | closed | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | First standalone release qualified as `0.1.1` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748`); closure `plans/closure/release-operational-qualification/004-status.md` |
+| Native diagnostics | M002 route/interface/egress MTU | blocked | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | M001 closure |
+| Native diagnostics | M003 ICMP echo | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | M001 closure + qualified ICMP backend |
+| Native diagnostics | M004 direct UDP | blocked | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001 closure |
+| Native diagnostics | M005 traceroute/path | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | M001 closure + tracer backend privilege/MSRV/footprint qualification |
+| Native diagnostics | M006 active PMTU | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | M001 plus M002/M004/M005 supporting seams |
 
 ## Superseded planning
 
@@ -198,8 +206,10 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
    adoption are closure-backed.
 5. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
    and the Eggpack->Eggup consumer seam is stable.
-6. Keep Phase 8/9 work roadmap-level until their platform/datagram ownership
-   prerequisites exist.
+6. Execute **Native M001** next: schema 0.4, `eggprobe-native`, native capability/error contract, fake backend, and dependency/MSRV qualification.
+7. After M001 closure, advance M002-M005 in dependency order; M003/M004 may proceed in parallel once their selected backends are qualified.
+8. Execute M006 PMTU only after the route/UDP/path test seams it depends on are closure-backed.
+9. Keep routed datagram/QUIC work in Phase 9; do not reuse the byte-stream Eggress route contract for Phase 8.
 
 ## Shared infrastructure baselines
 
@@ -208,7 +218,7 @@ These are reviewed state, not permanent dependency pins:
 | Project | Reviewed state | Relevant boundary |
 |---|---|---|
 | Eggfetch | 0.2.0 line | HTTP engine/custom dialer/origin TLS |
-| Eggress | 1.0.8 line | listener-free routes + typed detailed errors |
+| Eggress | Eggprobe-qualified 1.0.8 line; upstream main also contains listener-free UDP work requiring separate adoption review | byte-stream routes remain current Eggprobe authority; routed datagrams are Phase 9 |
 | Eggpack | Contract M002 + Manifest M001/M001a closed; Manifest M002/Build M001/Bootstrap M001/Eggup interop M001 ready at review | producer release authority |
 | Eggup | producer distribution retired/transferred; core/acquisition/rollback consumer layers qualified; future Eggpack-manifest adapter not yet stable | consumer deployment authority |
 | CodeGG planning convention | `239c51d19a63e8cf369a952b78d1e55092f4653b` | canonical -> ADR -> roadmap -> plan -> closure -> corrective lifecycle |
