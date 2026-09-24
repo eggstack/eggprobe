@@ -20,7 +20,7 @@ Credentials are input-only. Reports are structurally incapable of holding them.
 
 ## Key Code References
 
-Renderer: `render.rs:9-43`; route boundary/redaction: `domain/route.rs:8-74`; report envelope: `domain/report.rs:44-132`; DNS scope: `domain/probe.rs:50-67`; error hygiene: `domain/error.rs:64-83`, `engine.rs:193-342,1000-1093`; CLI selectors/batch/compare/main: `eggprobe-cli/src/lib.rs:220-341,387-397,527-533,601-614`, `main.rs:1-20`; exit codes: `assertions.rs:122-156`; tests: `contract.rs:100-158,228-243`, `routed_qualification.rs:180-316,431-450`, `schema.rs:3-12`, `eggprobe-cli/tests/render.rs:7-30`, `cli.rs:30-145`; operator: `docs/operator.md:33-81`.
+Renderer: `render.rs:9-43`; route boundary/redaction: `domain/route.rs:8-75`; report envelope: `domain/report.rs:44-132`; DNS scope: `domain/probe.rs:50-67`; error hygiene: `domain/error.rs:64-83`, `engine.rs:193-371,1000-1093`; CLI selectors/batch/compare/main: `eggprobe-cli/src/lib.rs:220-341,387-397,527-533,601-614`, `main.rs:1-20`; exit codes: `assertions.rs:122-156`; tests: `contract.rs:100-158,228-243`, `routed_qualification.rs:180-316,431-450`, `schema.rs:3-12`, `eggprobe-cli/tests/render.rs:7-30`, `cli.rs:30-145`; operator: `docs/operator.md:33-81`.
 
 ## Review Checklist / Risks
 

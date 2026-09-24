@@ -1,7 +1,8 @@
-//! Canonical, JSON-first domain types for Eggprobe.
+//! Canonical, JSON-first domain types and probe execution for Eggprobe.
 //!
-//! This crate owns the data contract shared by future probe execution and the
-//! command-line adapter. It intentionally contains no network implementation.
+//! This crate owns the data contract and probe engine shared by probe execution
+//! and the command-line adapter. The `domain` submodule intentionally contains
+//! no network implementation.
 
 #![deny(unsafe_code)]
 #![warn(missing_docs)]

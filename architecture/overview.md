@@ -42,7 +42,7 @@ binary (`eggprobe-cli`) is a thin presentation adapter and does not own networki
 ProbePlan (domain) --> ProbeEngine (core) --> ProbeReport (domain)
      ^                       |                         |
      |                       | Eggfetch HTTP           +-- evaluate_assertions --> findings
-     |                       | Eggress routes          +-- exit_code --> 0/1/130
+     |                       | Eggress routes          +-- exit_code --> 0/1 (+2/3/130 via CLI, see cli-automation.md)
      |                       |
 CLI plan builders            +-- render (JSON/human)
 (dns/tcp/tls/http/          +-- stdout (machine) / stderr (logs)

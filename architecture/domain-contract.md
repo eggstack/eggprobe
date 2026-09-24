@@ -2,9 +2,9 @@
 
 ## 1. Purpose and Ownership
 
-* **Owner:** `eggprobe-core` owns the canonical, JSON-first data contract shared by probe execution and the CLI adapter.
-  * `crates/eggprobe-core/src/lib.rs:1-4`: "Canonical, JSON-first domain types… owns the data contract shared by future probe execution and the command-line adapter. It intentionally contains no network implementation."
-  * `crates/eggprobe-core/src/lib.rs:6-8`: `#![deny(unsafe_code)]`, `#![warn(missing_docs)]`.
+* **Owner:** `eggprobe-core` owns the canonical, JSON-first data contract (`domain`) plus the probe engine (`engine`); the `eggprobe-cli` adapter owns no networking.
+  * `crates/eggprobe-core/src/lib.rs:1-4`: crate owns the data contract and probe engine; the `domain` submodule intentionally contains no network implementation.
+  * `crates/eggprobe-core/src/lib.rs:6-7`: `#![deny(unsafe_code)]`, `#![warn(missing_docs)]` (line 8 is `#![allow(clippy::module_name_repetitions)]`).
   * `crates/eggprobe-core/src/domain/mod.rs:1-11`: `domain` aggregates `error, finding, plan, probe, report, route, target, timing, version`.
   * Re-exports define the public contract surface: `crates/eggprobe-core/src/lib.rs:16-28`.
 * **JSON-first means:**
@@ -104,7 +104,7 @@ Findings never substitute `ProbeStatus`/`DiagnosticError`. `DiagnosticStage` lin
 
 ## 4. Invariants
 
-1. Core owns contract, no network (`lib.rs:1-4`).
+1. Core owns contract + engine; `domain/` has no network (`lib.rs:1-4`).
 2. Strict JSON: `deny_unknown_fields` on all input/output structs.
 3. Version gating: any `schema_version != CURRENT (0.3)` rejected.
 4. Redaction: `RouteSpec` may hold credentials; `ProbeReport` holds only `RouteSummary`; `Debug`/`Display` emit `<redacted>`; `DiagnosticError.message` credential-stripped.
@@ -117,7 +117,7 @@ Findings never substitute `ProbeStatus`/`DiagnosticError`. `DiagnosticStage` lin
 
 ## 5. Key Code References
 
-Ownership/no-network: `crates/eggprobe-core/src/lib.rs:1-4`; contract surface: `lib.rs:16-28`; module index: `domain/mod.rs:1-11`; `ProbePlan` + `validate`: `domain/plan.rs:12-88`; `ProbeSpec`/`ExecutionPolicy`/`AssertionSpec`: `domain/plan.rs:179-275`; `TargetSpec`: `domain/target.rs:9-89`; `RouteSpec` + redaction: `domain/route.rs:10-66`; report envelope: `domain/report.rs:14-126`; probe evidence: `domain/probe.rs:8-142`; findings: `domain/finding.rs:6-42`; timing: `domain/timing.rs:8-54`; versions: `domain/version.rs:11-140`; errors: `domain/error.rs:6-83`.
+Ownership/no-network: `crates/eggprobe-core/src/lib.rs:1-4`; contract surface: `lib.rs:16-28`; module index: `domain/mod.rs:1-11`; `ProbePlan` + `validate`: `domain/plan.rs:12-88`; `ProbeSpec`/`ExecutionPolicy`/`AssertionSpec`: `domain/plan.rs:179-275`; `TargetSpec`: `domain/target.rs:9-89`; `RouteSpec` + redaction: `domain/route.rs:10-75`; report envelope: `domain/report.rs:14-126`; probe evidence: `domain/probe.rs:8-142`; findings: `domain/finding.rs:6-42`; timing: `domain/timing.rs:8-54`; versions: `domain/version.rs:11-140`; errors: `domain/error.rs:6-83`.
 
 ## 6. Review Checklist / Risks
 
