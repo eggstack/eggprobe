@@ -1,17 +1,25 @@
 # Release and Operational Qualification M003 — Shared Installer and Update Integration
 
-Status: blocked — no published eggup interface
+Status: superseded by ADR-0002 and split M003a/M003b
 
-Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after dependencies close.
+Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; retained as historical pre-boundary planning.
 
 Source roadmap:
 
-- `plans/subsystems/release-operational-qualification-roadmap.md#m003--shared-installerupdate-integration`
+- historical M003 in `plans/subsystems/release-operational-qualification-roadmap.md`
 
-Hard dependency: Release M002 closed.
-Interface dependency: stable published `eggup` or equivalent shared Eggstack installer/updater API.
+Superseding architecture and plans:
 
-Primary class: capability
+- `plans/adrs/ADR-0002-release-producer-consumer-ownership.md`
+- `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md`
+- `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md`
+
+Historical dependency model: Release M002 + a shared Eggup installer/updater API.
+
+This dependency model is superseded. Producer release construction belongs to
+Eggpack; optional runtime deployment/update belongs to Eggup.
+
+Primary class: historical capability plan; superseded
 
 ## 1. Objective
 
@@ -60,3 +68,16 @@ Stop if `eggup` has no stable interface, requires service-management features Eg
 ## 7. Closure evidence
 
 Create `plans/closure/release-operational-qualification/003-status.md` with exact shared dependency/version, install/update matrix, integrity failures, rollback evidence, and ownership review.
+
+
+## 8. Supersession note
+
+This plan combined producer-side release mapping/bootstrap concerns with
+consumer-side verified replacement/rollback. ADR-0002 separates those owners.
+
+Do not execute this plan. Preserve it and
+`plans/closure/release-operational-qualification/003-status.md` as historical
+evidence of the earlier blocked architecture.
+
+Use M003a for future Eggpack producer integration and M003b for optional Eggup
+runtime self-update.
