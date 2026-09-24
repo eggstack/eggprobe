@@ -1,16 +1,58 @@
 # Eggprobe
 
-Eggprobe is a pre-release, JSON-first network diagnostics project. The
-canonical plan/report contract lives in `eggprobe-core`; the `eggprobe` binary
-is a thin presentation adapter and does not own networking.
+JSON-first network diagnostics. `eggprobe-core` owns the plan/report
+contract and all probing (direct DNS/TCP/TLS, Eggfetch-backed HTTP/1.1+HTTP/2,
+Eggress-routed TCP/TLS/HTTP, typed assertions); the `eggprobe` binary is a
+thin presentation adapter and owns no networking.
 
-The repository implements the schema 0.3 diagnostic contract, direct DNS/TCP/TLS
-probes, Eggfetch-backed HTTP, listener-free Eggress routing, typed assertions,
-plan-file/NDJSON automation, and reproducible release scaffolding. Report route
-summaries remain opaque until Eggress parses route input; credentials are never
-printed by human or machine renderers.
+## Install
 
-The minimum supported Rust version is 1.89.0.
+Source builds require Rust 1.89 or newer:
+
+```text
+cargo build --locked --release
+./target/release/eggprobe --version
+```
+
+Release archives contain the `eggprobe` executable plus license/README
+metadata; verify against the published checksum and move the binary into a
+trusted directory manually. See `docs/operator.md` for install details and
+the supported-target matrix.
+
+## Usage
+
+```text
+eggprobe dns example.com --json
+eggprobe tcp example.com --port 443 --json
+eggprobe tls example.com --port 443 --json
+eggprobe http https://example.com/ --json
+eggprobe check example.com --port 443 --url https://example.com/ --json
+eggprobe run plan.json
+eggprobe run - --ndjson < batch.jsonl
+eggprobe compare direct.json routed.json --repeat 5 --json
+```
+
+Notes:
+
+- `--json` / `--ndjson` select machine output on stdout; without them the
+  CLI prints short human text. Logs and diagnostics always go to stderr.
+- `run` accepts a single plan, a JSON array of plans, or `{plans:[...]}`;
+  `-` reads stdin. Batch output is one compact report per line in input
+  order.
+- `compare` takes a direct plan and an Eggress-routed plan with matching
+  target/probes and reports separate latency distributions.
+- Exit codes: `0` success, `1` negative probe/assertion outcome, `2` invalid
+  invocation/plan, `3` internal failure, `130` interrupted.
+- Full command, routing, privacy, and troubleshooting reference is in
+  `docs/operator.md`.
+
+## Contract
+
+The active contract is schema `0.3`, described by `schemas/plan-0.3.json`
+and `schemas/report-0.3.json`. Rust types in `eggprobe-core` are
+authoritative; the binary rejects plan versions other than `0.3`.
+Route credentials are input-only: reports carry only
+`{"kind":"eggress"}` and human/debug output prints `eggress(<redacted>)`.
 
 ## Verification
 
@@ -23,13 +65,3 @@ cargo +1.89.0 check --workspace --all-targets --locked
 cargo tree --locked
 cargo audit
 ```
-
-The project uses the JSON-first/core ownership described in
-`plans/adrs/ADR-0001-json-first-core-and-transport-ownership.md`. Machine
-output is the contract; human rendering remains downstream. `eggprobe run -`
-accepts a bounded plan from stdin, and `--ndjson` emits one final report per
-batch item. Ordinary releases use qualified archives and published checksums,
-installed manually. Shared producer release construction and bootstrap/CI
-integration belong to Eggpack and remain future work until its interfaces are
-stable and qualified. In-place self-update is optional future work through an
-Eggup consumer integration; its absence does not block archive releases.
