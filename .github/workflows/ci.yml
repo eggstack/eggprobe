@@ -37,8 +37,38 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      AUDIT_TOOLCHAIN: stable
+      AUDIT_TOOL: cargo-audit
+      AUDIT_TOOL_VERSION: 0.22.2
     steps:
       - uses: actions/checkout@v4
-      - uses: rustsec/audit-check@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install audit toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The workspace's rust-toolchain.toml pins the product MSRV; the
+          # audit tool's transitive dependencies require a newer compiler, so
+          # install it with the explicit audit toolchain rather than the
+          # workspace-default one. `--locked` enforces a reproducible
+          # dependency graph; `--root "$CARGO_HOME"` ensures the proxy
+          # binary lands where `cargo audit` will find it on PATH.
+          cargo +"$AUDIT_TOOLCHAIN" install \
+            "$AUDIT_TOOL" \
+            --version "$AUDIT_TOOL_VERSION" \
+            --locked \
+            --root "$CARGO_HOME"
+      - name: Record audit tool versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "rustc:  $(rustc +"$AUDIT_TOOLCHAIN" --version)"
+          echo "cargo:  $(cargo +"$AUDIT_TOOLCHAIN" --version)"
+          echo "$AUDIT_TOOL: $(cargo +"$AUDIT_TOOLCHAIN" audit --version)"
+      - name: Run dependency audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo +"$AUDIT_TOOLCHAIN" audit

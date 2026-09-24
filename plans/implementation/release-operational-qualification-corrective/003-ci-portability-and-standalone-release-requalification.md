@@ -1,6 +1,6 @@
 # Release and Operational Qualification Corrective C003 — CI Portability and Standalone Release Requalification
 
-Status: ready for handoff
+Status: closed; closure record at `plans/closure/release-operational-qualification-corrective/003-status.md`
 
 Planning baseline: `cf857fc24579263611396d4d88a1ef622601d612`
 

@@ -21,7 +21,7 @@ cargo tree --locked
 cargo audit
 ```
 - Focused: `cargo test -p eggprobe-core --all-features --locked [filter]`, `cargo test -p eggprobe-cli --all-features --locked [filter]`.
-- CI (`ci.yml`): fmt+clippy+test matrix on ubuntu/macos/windows; separate MSRV `cargo check --workspace --all-targets --locked`; `rustsec/audit-check`.
+- CI (`ci.yml`): fmt+clippy+test matrix on ubuntu/macos/windows; separate MSRV `cargo check --workspace --all-targets --locked`; audit job uses an explicit `dtolnay/rust-toolchain@stable` + pinned `cargo-audit` install + `cargo +stable audit` so the audit tool does not inherit the product 1.89 MSRV. Canonical JSON fixtures and schemas are LF-locked via `.gitattributes` so Windows checkout cannot mutate the contract bytes.
 - Regenerate schemas after any domain change, before merge: `cargo run -p eggprobe-core --example generate-schemas --locked`. Writes only `*-0.3.json` and patches `schema_version` to `{"const":"0.3"}`. Confirm no `expression` leaks (`tests/schema.rs` asserts this).
 
 ## Contract invariants (will break tests/schemas if missed) → `architecture/domain-contract.md`, `architecture/schema-contract.md`

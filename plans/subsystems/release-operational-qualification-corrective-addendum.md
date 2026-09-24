@@ -1,6 +1,6 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 conditionally closed; C002 closed; C003 ready
+Status: active; C001 conditionally closed; C002 closed; C003 closed
 
 Historical planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -93,20 +93,27 @@ Closure target:
 
 - `plans/closure/release-operational-qualification-corrective/003-status.md`
 
-Status: ready for handoff.
+Status: closed. Closure evidence:
 
-C003 is a hard first-release gate. It is intentionally local to Eggprobe:
-Eggpack producer integration and Eggup self-update remain deferred and MUST NOT
-be introduced as a workaround.
+- `plans/closure/release-operational-qualification-corrective/003-status.md`
+
+C003 was a hard first-release gate; it is intentionally local to Eggprobe and
+introduced no Eggpack producer integration or Eggup self-update. The
+cross-platform CI barrier it repaired (Windows CRLF fixtures + audit-tool
+bootstrap under the product MSRV) is now removed: canonical JSON
+fixtures/schemas are LF-locked via `.gitattributes`, and the `audit` job is
+rewritten around an explicit stable toolchain, a pinned `cargo-audit`
+install, and `cargo +stable audit`. The next required action is C001's
+valid-tag hosted artifact evidence; M004 remains blocked only on that gate.
 
 ## 5. Downstream disposition
 
 - Historical M003 is superseded by M003a/M003b under ADR-0002.
 - M003a Eggpack producer integration is deferred and not a first-release gate.
 - M003b Eggup runtime self-update is optional/deferred and not a first-release gate.
-- C003 executes next and must restore a fully green current-head CI baseline.
-- After C003 closes, complete C001's remaining valid-tag hosted artifact
-  evidence and promote M002 to operationally qualified.
+- C003 is closed; the cross-platform CI barrier is removed.
+- The next required action is C001's remaining valid-tag hosted artifact
+  evidence, which promotes M002 to operationally qualified.
 - Release M004 then becomes ready for the first standalone archive release.
 - Eggpack/Eggup instability does not block this sequence and must not be worked
   around by copying their producer/consumer responsibilities into Eggprobe.
