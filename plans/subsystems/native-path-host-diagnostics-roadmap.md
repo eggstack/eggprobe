@@ -208,6 +208,22 @@ Closure: `plans/closure/native-path-host-diagnostics-corrective/001-status.md`.
 
 This corrective reconciled the registry and user-facing documentation after M001/M002 closure. It does not reopen their production behavior. It removed the accidental serialization of M004 behind blocked M003: after M001, ICMP research and direct UDP are independent branches.
 
+### C002 — ping-async upstream ICMP contract enablement
+
+Status: ready.
+
+Plan: `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md`
+
+C002 owns the preferred M003 unblock: qualify current `ping-async` upstream and land an additive public interface that preserves exact payload-length semantics, truthful responder identity, and structured network outcomes distinct from local deadline expiry. Eggsec currently has no reusable echo primitive; Synvoid's ICMP work is filtering/platform reference material, not a suitable Eggprobe dependency.
+
+### C003 — Published ICMP backend adoption qualification
+
+Status: blocked on C002 closure and a crates.io publication containing the accepted interface.
+
+Plan: `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md`
+
+C003 qualifies the immutable published artifact against Rust 1.89, all supported targets, dependency/security policy, and host-native semantics before M003 may add the production dependency. Git pins/forks are not an accepted production bridge.
+
 ## 11. Completion definition
 
 Phase 8 closes when M001-M006 have closure evidence or an accepted unsupported/deferred disposition and every implemented primitive has a typed schema contract, bounded execution, deterministic qualification, and truthful platform documentation.
@@ -220,7 +236,9 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 |---|---|---|---|---|
 | M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | `plans/closure/native-path-host-diagnostics/001-status.md` | — |
 | M002 target route/interface/MTU evidence | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | `plans/closure/native-path-host-diagnostics/002-status.md` | — |
-| M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | Current safe candidates fail payload/reply/error semantics; qualify an alternative first |
+| C002 ping-async upstream ICMP enablement | ready | `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md` | pending | — |
+| C003 published ICMP backend qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | pending | C002 closure + published crates.io release |
+| M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | C002 + C003 closure |
 | M004 direct UDP service diagnostics | ready (parallel to M003 after M001) | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 closed; M002 source/interface seam closed; not held behind M003 |
 | M005 traceroute/path diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | pending | `tracert` 0.12.0 loses silent attempts, deduplicates hops, reverse-resolves by default, and duplicates `netdev` |
 | M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | M004 and M005 seams remain open; safe platform controls still require qualification |
