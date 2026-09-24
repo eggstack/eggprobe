@@ -73,15 +73,17 @@ Create `plans/closure/release-operational-qualification/004-status.md` with a re
 
 For the first standalone release, this plan becomes ready when:
 
-1. Release corrective C004 is closed with a fully green hosted CI matrix
-   (`plans/closure/release-operational-qualification-corrective/004-status.md`),
-   including Windows proof that successfully observed HTTP error responses
-   remain probe-success observations while assertions can fail independently;
-2. Release corrective C001 then obtains hosted artifact evidence against a
-   valid release tag and Release M002 is operationally qualified; and
-3. Release corrective C002 remains closed. C003 remains historical evidence
-   for the CRLF/audit defects it fixed, with the later Windows findings
-   closed through C004.
+1. Release corrective C005 closes with:
+   - one intentional valid release tag;
+   - successful hosted packaging across the declared target matrix;
+   - verified archive/checksum/release-identity evidence;
+   - native smoke evidence on host-native targets;
+   - Linux aarch64 retained as build-qualified unless native SBC evidence is
+     separately obtained;
+2. C005 records C001's remaining operational evidence as satisfied and promotes
+   Release M002 to operationally qualified; and
+3. Release corrective C002 remains closed; C003/C004 remain historical closure
+   evidence for the CI portability findings they corrected.
 
 Eggpack producer adoption (M003a) and Eggup self-update (M003b) are not first
 release gates. No temporary local replacement for either shared subsystem is

@@ -1,6 +1,6 @@
 # Release Corrective C001 — Packaging Workflow Correction and Hosted Evidence
 
-Status: conditionally closed
+Status: conditionally closed; remaining operational evidence delegated to C005
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -105,3 +105,15 @@ Maintain least privilege:
 ## 10. Closure evidence
 
 Create `plans/closure/release-operational-qualification-corrective/001-status.md` with exact workflow run IDs, per-target results, hashes, archive contents, smoke results, permission review, and remaining SBC-native evidence condition.
+
+
+## 11. Current operational completion plan
+
+The historical corrective remains conditionally closed. Its remaining hosted
+evidence is now executed through:
+
+- `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md`
+
+Do not reopen or rewrite the historical C001 closure record to pretend the
+evidence already exists. C005 must collect it against the current qualified
+baseline.

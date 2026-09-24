@@ -1,6 +1,6 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 conditionally closed/released from hold; C002 closed; C003 closed historically; C004 closed
+Status: active; C001 conditionally closed; C002 closed; C003 closed historically; C004 closed; C005 ready
 
 Historical planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -160,13 +160,44 @@ and does not adopt Eggpack or Eggup.
 - C003 remains historical closure evidence for the CRLF/audit findings it
   corrected; C004 owns the later Windows HTTP fixture and refused-hop
   findings and is now closed.
-- C004 has closed with a fully green hosted matrix; do not create
-  further tags until C001's valid-tag hosted packaging evidence exists.
-- C001 is released from hold: its remaining condition is creating/using
-  an intentional valid release tag and obtaining the successful hosted
-  packaging run with artifact/hash/native-smoke evidence, which
-  promotes M002 to operationally qualified.
-- Release M004 remains blocked until that C001/M002 operational
-  evidence completes.
+- C004 has closed with a fully green hosted matrix.
+- C005 is the registered execution plan for C001's remaining valid-tag hosted
+  packaging evidence and M002 operational promotion.
+- Release M004 remains blocked until C005 closes with that evidence.
 - Eggpack/Eggup instability does not block this sequence and must not be worked
   around by copying their producer/consumer responsibilities into Eggprobe.
+
+
+## 7. C005 — First-release tag and hosted packaging qualification
+
+C001 is already a historical conditional-closure record. Its only remaining
+condition is operational evidence that cannot be satisfied by static review:
+an intentional release tag, a successful hosted packaging run, and inspected
+artifacts/checksums/smoke evidence.
+
+C005 provides a fresh baseline-specific handoff for that work instead of
+rewriting C001 history.
+
+Implementation:
+
+- `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md`
+
+Closure target:
+
+- `plans/closure/release-operational-qualification-corrective/005-status.md`
+
+Status: ready for handoff.
+
+C005 also owns the narrow pre-tag release-workflow hygiene required for the
+first run: replace the stale `macos-13` Intel runner with a currently
+documented standard Intel runner (planned `macos-15-intel`) and remove the
+known actionlint/shellcheck target-comparison warning without changing the
+artifact contract.
+
+Successful C005 closure:
+
+- supplies C001's remaining hosted evidence;
+- promotes Release M002 to operationally qualified;
+- makes M004 ready;
+- does not publish a GitHub Release;
+- does not adopt Eggpack or Eggup.
