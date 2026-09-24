@@ -3,7 +3,10 @@ use eggprobe_core::{
     ProbeEngine, ProbePlan, ProbeSpec, ReportStatus, RouteSpec, SchemaVersion, TargetPolicy,
     TargetSpec,
 };
-use tokio::{io::AsyncWriteExt, net::TcpListener};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpListener,
+};
 
 fn plan(target: TargetSpec, probes: Vec<ProbeSpec>) -> ProbePlan {
     ProbePlan {
@@ -44,10 +47,33 @@ async fn http_status_is_observed_even_when_assertion_fails() {
     let port = listener.local_addr().unwrap().port();
     let task = tokio::spawn(async move {
         let (mut stream, _) = listener.accept().await.unwrap();
+        // Consume the request headers with a bound before responding.
+        // Closing a Windows socket while request bytes remain unread sends
+        // RST, which can discard the queued response before Eggfetch reads
+        // it; Unix delivers the queued bytes with FIN instead, which is why
+        // the previous write-and-drop fixture passed everywhere but Windows.
+        let mut request = Vec::new();
+        let mut chunk = [0u8; 1024];
+        loop {
+            let count =
+                tokio::time::timeout(std::time::Duration::from_secs(5), stream.read(&mut chunk))
+                    .await
+                    .expect("fixture request read must not hang")
+                    .unwrap();
+            if count == 0 {
+                break;
+            }
+            request.extend_from_slice(&chunk[..count]);
+            if request.windows(4).any(|window| window == b"\r\n\r\n") || request.len() > 16 * 1024 {
+                break;
+            }
+        }
         stream
             .write_all(b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n")
             .await
             .unwrap();
+        stream.flush().await.unwrap();
+        stream.shutdown().await.unwrap();
     });
     let mut diagnostic_plan = plan(
         TargetSpec::new("127.0.0.1", Some(port)).unwrap(),
@@ -65,6 +91,15 @@ async fn http_status_is_observed_even_when_assertion_fails() {
         .await;
     task.await.unwrap();
     assert_eq!(report.status, ReportStatus::Ok);
+    assert_eq!(
+        report.probes[0].status,
+        eggprobe_core::ProbeStatus::Ok,
+        "{report:?}"
+    );
+    let Some(eggprobe_core::ProbeEvidence::Http(evidence)) = &report.probes[0].evidence else {
+        panic!("HTTP evidence missing: {report:?}");
+    };
+    assert_eq!(evidence.status, Some(503), "{report:?}");
     let findings = evaluate_assertions(&report, &diagnostic_plan.assertions);
     assert_eq!(findings[0].outcome, eggprobe_core::FindingOutcome::Failed);
 }
