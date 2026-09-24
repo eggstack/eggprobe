@@ -2,7 +2,7 @@
 
 Status: ready for handoff
 
-Planning baseline: current planning head after ADR-0002 registration.
+Planning baseline: `a96911854b73e055ab67ea2f7c1592796f031d58` (release roadmap/ADR realignment); refresh if implementation starts from a later code baseline.
 
 Source roadmap:
 
