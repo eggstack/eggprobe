@@ -818,6 +818,12 @@ impl AsyncWrite for EgressStream {
 }
 
 fn egress_connector(expression: &str) -> Result<eggress_embed::outbound::OutboundConnector, ()> {
+    // Eggress builds a default rustls client config without an explicit
+    // provider, so the host process must supply one before any routed
+    // execution. Install ring (the same provider the direct path uses)
+    // idempotently: every routed probe funnels through here, and a previous
+    // installation (for example by an embedding test setup) is unaffected.
+    let _ = rustls::crypto::ring::default_provider().install_default();
     eggress_embed::outbound::OutboundConnector::from_pproxy_uri(expression).map_err(|_| ())
 }
 
