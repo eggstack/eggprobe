@@ -1,6 +1,6 @@
 # Native M002 — Target Route, Interface, and Egress-MTU Evidence
 
-Status: closing
+Status: closed
 
 Repository baseline: `8055730df76f187d94ff83b810d93cb935bb8c37`
 

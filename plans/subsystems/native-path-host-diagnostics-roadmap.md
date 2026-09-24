@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001 ready, M002-M006 dependency-ordered
+Status: active planning; M001/M002 closed, M003 blocked, M004 ready, M005/M006 blocked
 
 Long-term references:
 
@@ -128,10 +128,10 @@ Backend observations remain internal.
 Phase 7 / 0.1.1 qualification [CLOSED]
               |
               v
-M001 contract + platform substrate [READY]
+M001 contract + platform substrate [CLOSED]
               |
               v
-M002 route/interface/egress-MTU
+M002 route/interface/egress-MTU [CLOSED]
        +------+------+
        |             |
        v             v

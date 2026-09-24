@@ -33,7 +33,7 @@ implementation plans, closure records, corrective addenda, and Git history.
 
 Last closure-backed product implementation head:
 
-`54cbebbd50c269ee8b6271c45c5d124784ac54a9`
+`6e45e857e6a621f9e5a895ab7618a8b6dbaa6d6b` (Native M001/M002)
 
 C003 planning baseline:
 
@@ -105,8 +105,8 @@ post-closure findings have been handled by the registered corrective sequence.
 |---|---|---|---|---|
 | Release corrective | C005 first-release tag and hosted packaging qualification | closed | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | Tag `v0.1.0` at `2760b8b`; hosted packaging run `36030784594` fully green; closure `plans/closure/release-operational-qualification-corrective/005-status.md` |
 | Release corrective | C006 routed-path CryptoProvider installation | closed | `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md` | Fix at `fa8ad7c`; hosted run `36038995837` green; closure `plans/closure/release-operational-qualification-corrective/006-status.md` |
-| Native path/host diagnostics | M001 native contract/platform substrate | closing | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | Schema 0.4, `eggprobe-native`, dependency/API decisions, and direct-only native semantics implemented; closure evidence in progress |
-| Native path/host diagnostics | M002 target route/interface/egress MTU | closing | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | Target-scoped route CLI and source/interface/MTU/candidate evidence implemented; hosted platform evidence in progress |
+| Native path/host diagnostics | M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | Schema 0.4 and `eggprobe-native` closed; `plans/closure/native-path-host-diagnostics/001-status.md` |
+| Native path/host diagnostics | M002 target route/interface/egress MTU | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | Target-scoped route/interface/source/MTU evidence closed; `plans/closure/native-path-host-diagnostics/002-status.md` |
 | Native path/host diagnostics | M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001 is closed and M002 source/interface route seam is available; held behind sequential M003 assessment |
 
 ## Operational evidence gate (M004 closed)
@@ -206,8 +206,8 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
    adoption are closure-backed.
 5. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
    and the Eggpack->Eggup consumer seam is stable.
-6. ~~Execute **Native M001**~~ — closed with schema 0.4, `eggprobe-native`, and qualified route/interface dependencies.
-7. ~~Execute **Native M002**~~ — closed with target-scoped route/interface evidence and host-native CI qualification.
+6. ~~Execute **Native M001**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/001-status.md`.
+7. ~~Execute **Native M002**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/002-status.md`.
 8. Stop before **Native M003**: the reviewed ICMP dependencies do not meet required evidence and error semantics. Resume only after a safe backend or accepted upstream interface is qualified.
 9. M004 is ready after M001/M002 closure, but remains unexecuted until the sequential M003 blocker is resolved.
 10. Keep M005 blocked until a tracer backend preserves silent per-attempt evidence without default reverse DNS or unacceptable duplicate dependencies.
