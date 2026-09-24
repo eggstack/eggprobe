@@ -1,6 +1,6 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: blocked — awaiting release artifact evidence and corrective C002
+Status: blocked — awaiting release artifact evidence; corrective C002 is closed
 
 Planning baseline: historical `e55a21fe73915b7a38c2fa674807354539806c60`; refresh at execution against current release artifacts.
 
@@ -13,8 +13,8 @@ Conditional dependency: M003b only if runtime self-update is advertised in the
 release being qualified. M003a Eggpack producer adoption is not required for
 the first standalone archive release.
 
-Additional planning dependency: Release corrective C002 must close so operator
-documentation uses the current Eggpack/Eggup ownership model.
+Additional planning dependency: Release corrective C002 (closed) established
+the current Eggpack/Eggup ownership model in operator documentation.
 
 Primary class: invariant + polish
 
@@ -69,7 +69,8 @@ For the first standalone release, this plan becomes ready when:
 
 1. Release corrective C001 obtains hosted artifact evidence against a valid
    release tag and Release M002 is operationally qualified; and
-2. Release corrective C002 closes the stale ownership/documentation cleanup.
+2. Release corrective C002 is closed with the stale ownership/documentation
+   cleanup complete.
 
 Eggpack producer adoption (M003a) and Eggup self-update (M003b) are not first
 release gates.

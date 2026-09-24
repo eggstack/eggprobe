@@ -28,5 +28,8 @@ The project uses the JSON-first/core ownership described in
 `plans/adrs/ADR-0001-json-first-core-and-transport-ownership.md`. Machine
 output is the contract; human rendering remains downstream. `eggprobe run -`
 accepts a bounded plan from stdin, and `--ndjson` emits one final report per
-batch item. The shared Eggstack updater is not yet integrated, so releases use
-manual archive installation and checksum verification.
+batch item. Ordinary releases use qualified archives and published checksums,
+installed manually. Shared producer release construction and bootstrap/CI
+integration belong to Eggpack and remain future work until its interfaces are
+stable and qualified. In-place self-update is optional future work through an
+Eggup consumer integration; its absence does not block archive releases.

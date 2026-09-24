@@ -44,3 +44,10 @@ aarch64 remains build-qualified until native SBC evidence exists.
 
 Release M003 remains blocked on the unpublished shared `eggup` interface.
 Release M004 remains blocked on the remaining corrective qualification work.
+
+Historical snapshot at C001 closure: the M003 statement above records the
+pre-ADR-0002 disposition and is retained as evidence. ADR-0002 superseded that
+mixed milestone with producer-only M003a (Eggpack) and optional consumer M003b
+(Eggup). C002 has now closed the documentation cleanup; M004's remaining gate
+is valid-tag hosted artifact evidence for C001/M002. Neither M003a nor M003b is
+a first-release prerequisite.

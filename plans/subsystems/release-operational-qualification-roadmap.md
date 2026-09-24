@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: active; M001 closed, M002 operational evidence pending, C002 ready; historical M003 superseded
+Status: active; M001 closed, M002 operational evidence pending, C002 closed; historical M003 superseded
 
 Long-term references:
 
@@ -92,7 +92,7 @@ Release state:
 - C001 is conditionally closed because the repository has no existing release
   tag, so a successful hosted packaging run/artifact evidence does not yet
   exist;
-- C002 release-boundary/documentation cleanup is ready.
+- C002 release-boundary/documentation cleanup is closed.
 
 Current shared-infrastructure state reviewed during the ownership correction:
 
@@ -177,7 +177,7 @@ M002 standalone packaging [IMPLEMENTED; OPERATIONAL EVIDENCE PENDING]
               |
               +--> C001 hosted packaging evidence [CONDITIONALLY CLOSED]
               |
-              +--> C002 release-boundary/docs cleanup [READY]
+              +--> C002 release-boundary/docs cleanup [CLOSED]
               |
               v
 M004 release qualification/operator docs
@@ -300,8 +300,8 @@ Exit conditions:
 - no unresolved medium-or-higher release blocker;
 - update instructions only if optional M003b is actually closed/advertised.
 
-Status: blocked only on M002/C001 operational artifact evidence and corrective
-C002 for the first standalone release.
+Status: blocked only on M002/C001 operational artifact evidence for the first
+standalone release; corrective C002 is closed.
 
 ## 8. Cross-cutting requirements
 
@@ -377,8 +377,8 @@ optional/deferred milestones and do not prevent that closure.
 | M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | — |
 | M002 cross-platform binary packaging | operational evidence pending | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure + corrective C001 | existing valid release tag and hosted run evidence |
 | C001 packaging workflow correction/hosted evidence | conditionally closed | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | `plans/closure/release-operational-qualification-corrective/001-status.md` | valid release tag + hosted artifact evidence |
-| C002 release boundary/documentation cleanup | ready | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | pending | — |
+| C002 release boundary/documentation cleanup | closed | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | `plans/closure/release-operational-qualification-corrective/002-status.md` | — |
 | historical M003 mixed installer/update | superseded | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | historical blocked disposition retained | superseded by ADR-0002 |
 | M003a Eggpack producer integration | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | pending | selected Eggpack producer interfaces not yet closure-backed |
 | M003b Eggup runtime self-update | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | pending | Eggpack manifest/interoperability + Eggup consumer adapter + product decision |
-| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | M002/C001 hosted evidence + C002 |
+| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | M002/C001 hosted evidence; C002 closed |

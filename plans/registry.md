@@ -49,7 +49,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Foundation diagnostic contract | closed corrective | C002 closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
 | Transport/probe engine | closed corrective | C001/C002 closed; Eggress 1.0.8 qualified | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
 | CLI/automation | closed corrective | C001 closed | `plans/subsystems/cli-automation-corrective-addendum.md` |
-| Release/packaging | active | C001 conditionally closed; C002 ready | `plans/subsystems/release-operational-qualification-roadmap.md` |
+| Release/packaging | active | C001 conditionally closed; C002 closed | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
 | Native path + QUIC/H3 expansion | roadmap-level | no implementation handoff | Phase 8/9 prerequisites unresolved |
@@ -58,7 +58,7 @@ post-closure findings have been handled by the registered corrective sequence.
 
 | Workstream | Milestone | Status | Plan | Handoff note |
 |---|---|---|---|---|
-| Release corrective | C002 release-boundary/documentation cleanup | ready | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | Documentation/planning-adjacent cleanup only; no tag/publication/integration. |
+| Release corrective | C002 release-boundary/documentation cleanup | closed | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | `plans/closure/release-operational-qualification-corrective/002-status.md` |
 
 ## Operational evidence gate
 
@@ -75,9 +75,9 @@ That evidence is the real first-release blocker. It is not an Eggup blocker.
 
 | Workstream | Milestone | Status | Plan | Blocker / readiness gate |
 |---|---|---|---|---|
-| Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | selected Eggpack manifest/build/finalization/bootstrap/CI interfaces must be closure-backed |
-| Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | stable Eggpack manifest/interoperability + Eggup consumer adapter/API + product decision |
-| Release qualification | M004 | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | M002/C001 hosted artifact evidence + Release C002 |
+| Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | Current Eggpack HEAD `154d4a2` still has Manifest M002, Build/Qualification M001, and Bootstrap M001 ready but not closed; selected interfaces must be closure-backed |
+| Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | Current Eggpack HEAD `154d4a2` has interop M001 ready but not closed; Eggup HEAD `8937ad0` still gates adapter implementation on that closure; product decision also required |
+| Release qualification | M004 | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | M002/C001 hosted artifact evidence; Release C002 is closed |
 
 ## Superseded planning
 
@@ -115,14 +115,14 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
 
 ## Current execution order
 
-1. Execute **Release corrective C002** now; it has no external blocker.
+1. **Release corrective C002 is closed.**
 2. Independently, when maintainers choose a first release identity/tag, complete
    the remaining **C001 hosted evidence** and promote M002 to operationally
    qualified.
 3. When C001/M002 evidence and C002 are closed, execute **Release M004** and
    qualify the first standalone archive release.
 4. Do not wait for M003a or M003b to complete the first release.
-5. Author/execute M003a only after the specific Eggpack interfaces selected for
+5. M003a remains blocked until the specific Eggpack interfaces selected for
    adoption are closure-backed.
 6. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
    and the Eggpack->Eggup consumer seam is stable.

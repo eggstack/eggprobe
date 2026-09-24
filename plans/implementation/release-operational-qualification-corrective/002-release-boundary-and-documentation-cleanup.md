@@ -1,6 +1,6 @@
 # Release Corrective C002 — Release Boundary and Documentation Cleanup
 
-Status: ready for handoff
+Status: closed
 
 Planning baseline: `a96911854b73e055ab67ea2f7c1592796f031d58` (release roadmap/ADR realignment); refresh if implementation starts from a later code baseline.
 

@@ -2,9 +2,12 @@
 
 ## Install and verify
 
+Ordinary Eggprobe releases use qualified archives and published checksums.
 Release archives contain the `eggprobe` executable, this repository's license,
 and README metadata. Verify the archive against `SHA256SUMS.txt` before moving
 the binary into a trusted directory. Source builds require Rust 1.89 or newer.
+The archive is installed manually; no automatic download or replacement script
+is part of this installation path.
 
 The current qualification matrix builds Linux x86_64/aarch64, macOS x86_64/
 arm64, and Windows x86_64. Host-native CI covers the three desktop/server
@@ -65,8 +68,12 @@ environment proxy variables or silently fall back to a direct connection.
 - Exit codes are 0 for success, 1 for negative probe/assertion outcomes, 2 for
   invalid invocation/plan, 3 for internal failures, and 130 for interruption.
 
-The shared Eggstack `eggup` interface is not yet published. Do not use an
-unverified download or replacement script as an automatic updater.
+Shared producer-side release construction, bootstrap installers, and generated
+release CI belong to Eggpack. Eggprobe may adopt those interfaces in the future
+after they are stable and qualified. In-place runtime self-update is a separate
+optional Eggup consumer integration. Eggprobe does not currently provide a
+self-update command, and that does not block ordinary archive releases. Do not
+use an unverified download or replacement script as an automatic updater.
 
 `compare` requires a direct first plan and routed second plan with matching
 target/probe families. It reports separate direct and routed distributions.
