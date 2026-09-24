@@ -28,7 +28,7 @@ jobs:
             runner: ubuntu-latest
             smoke: false
           - target: x86_64-apple-darwin
-            runner: macos-13
+            runner: macos-15-intel
             smoke: true
           - target: aarch64-apple-darwin
             runner: macos-latest
@@ -92,10 +92,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            bin="target/${{ matrix.target }}/release/eggprobe.exe"
+          target='${{ matrix.target }}'
+          if [[ "$target" == *windows* ]]; then
+            bin="target/$target/release/eggprobe.exe"
           else
-            bin="target/${{ matrix.target }}/release/eggprobe"
+            bin="target/$target/release/eggprobe"
           fi
           "$bin" --version
           "$bin" run <(printf '%s\n' '{"schema_version":"0.3","target":{"host":"127.0.0.1"},"route":{"kind":"direct"},"probes":[],"execution":{"deadline":1000000,"repetitions":1,"retries":0},"assertions":[]}') --ndjson > smoke.jsonl
