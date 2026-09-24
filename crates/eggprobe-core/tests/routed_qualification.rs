@@ -160,37 +160,21 @@ async fn routed_hop_connect_error_keeps_typed_stage_and_never_dials_target_direc
     loop {
         attempts += 1;
         let hop_port = closed_port().await;
-        // TEMP-DIAGNOSTIC (C004): control probe to separate OS-level dial
-        // behavior from Eggress-level behavior on Windows. Will remove.
-        let control_start = std::time::Instant::now();
-        let control = tokio::time::timeout(
-            std::time::Duration::from_secs(2),
-            tokio::net::TcpStream::connect(format!("127.0.0.1:{hop_port}")),
-        )
-        .await;
-        let control_outcome = match &control {
-            Ok(Ok(_)) => "connected".to_owned(),
-            Ok(Err(error)) => format!("refused-or-error: {error}"),
-            Err(_) => "control-timeout".to_owned(),
-        };
-        eprintln!(
-            "C004-DIAG attempt={attempts} hop_port={hop_port} control={control_outcome} control_elapsed_ms={}",
-            control_start.elapsed().as_millis()
-        );
         let mut diagnostic_plan = plan(
             "127.0.0.1",
             Some(target_port),
             &format!("http://127.0.0.1:{hop_port}"),
             vec![ProbeSpec::Tcp { port: target_port }],
         );
-        diagnostic_plan.execution.deadline = DurationMicros::from_micros(500_000);
-        let probe_start = std::time::Instant::now();
+        // A dropped loopback port is refused in milliseconds on most stacks,
+        // but hosted Windows runners have been observed to delay the RST by
+        // ~2s (a raw control dial shows no refusal within a 2s budget while
+        // the same dial is refused in 0ms on macOS/Linux). The generous
+        // per-attempt deadline absorbs that environmental delay without
+        // accepting any other outcome: only a genuine refusal passes.
+        diagnostic_plan.execution.deadline = DurationMicros::from_micros(6_000_000);
         let report = ProbeEngine::default().execute(diagnostic_plan).await;
         let error = report.probes[0].error.as_ref().unwrap();
-        eprintln!(
-            "C004-DIAG attempt={attempts} engine_error={error:?} probe_elapsed_ms={}",
-            probe_start.elapsed().as_millis()
-        );
         if error.kind == DiagnosticErrorKind::ConnectionRefused {
             assert_eq!(error.stage, DiagnosticStage::HopConnect, "{error:?}");
             assert_eq!(error.route_hop_index, Some(0));
@@ -198,7 +182,7 @@ async fn routed_hop_connect_error_keeps_typed_stage_and_never_dials_target_direc
             break;
         }
         assert!(
-            attempts < 10,
+            attempts < 4,
             "hop port claimed by a parallel fixture {attempts} times in a row: {error:?}"
         );
     }
