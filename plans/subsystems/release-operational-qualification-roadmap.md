@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: active; M001 closed, M002 operational evidence pending, C002 closed; historical M003 superseded
+Status: active; M001 closed, M002 operational evidence pending, C002 closed, C003 ready; historical M003 superseded
 
 Long-term references:
 
@@ -92,7 +92,20 @@ Release state:
 - C001 is conditionally closed because the repository has no existing release
   tag, so a successful hosted packaging run/artifact evidence does not yet
   exist;
-- C002 release-boundary/documentation cleanup is closed.
+- C002 release-boundary/documentation cleanup is closed;
+- current `main` at `cf857fc24579263611396d4d88a1ef622601d612` has fresh
+  release-qualification failures in GitHub Actions run `36003160519`:
+  Windows reaches the contract suite but exact golden JSON string comparisons
+  fail because checked-out fixtures contain CRLF while generated JSON uses LF;
+- the dependency-audit job does not reach an Eggprobe advisory result because
+  `rustsec/audit-check@v2` attempts to build `cargo-audit 0.22.2` under the
+  repository Rust 1.89 toolchain and resolves `kstring 2.0.5`, which requires
+  Rust 1.96;
+- Ubuntu, macOS, strict Clippy, and the Rust 1.89 MSRV lane pass on that same
+  run;
+- corrective C003 is registered to restore cross-platform CI and isolate
+  security-audit tooling from the product MSRV before hosted release evidence
+  is collected.
 
 Current shared-infrastructure state reviewed during the ownership correction:
 
@@ -115,8 +128,9 @@ Current shared-infrastructure state reviewed during the ownership correction:
 - future Eggpack-manifest consumption remains optional and gated on a stable
   interoperability adapter.
 
-Therefore the first Eggprobe release is blocked by its own hosted artifact
-evidence, not by Eggup and not by Eggpack adoption.
+Therefore the first Eggprobe release is blocked first by its own current-head
+CI qualification (C003) and then by hosted artifact evidence (C001/M002), not
+by Eggup and not by Eggpack adoption.
 
 ## 5. Target architecture
 
@@ -175,11 +189,15 @@ M001 CI/MSRV/release skeleton [CLOSED]
               v
 M002 standalone packaging [IMPLEMENTED; OPERATIONAL EVIDENCE PENDING]
               |
-              +--> C001 hosted packaging evidence [CONDITIONALLY CLOSED]
-              |
               +--> C002 release-boundary/docs cleanup [CLOSED]
               |
-              v
+              +--> C003 CI portability/current-head qualification [READY]
+                              |
+                              v
+              C001 remaining hosted packaging evidence
+                    [CONDITIONALLY CLOSED]
+                              |
+                              v
 M004 release qualification/operator docs
               |
               v
@@ -300,8 +318,8 @@ Exit conditions:
 - no unresolved medium-or-higher release blocker;
 - update instructions only if optional M003b is actually closed/advertised.
 
-Status: blocked only on M002/C001 operational artifact evidence for the first
-standalone release; corrective C002 is closed.
+Status: blocked on corrective C003 plus M002/C001 operational artifact
+evidence for the first standalone release; corrective C002 is closed.
 
 ## 8. Cross-cutting requirements
 
@@ -333,6 +351,8 @@ integration replaces it.
 
 First-release qualification:
 
+- fully green current-head CI across Linux, macOS, Windows, MSRV, and the
+  dependency-audit lane before selecting/tagging the release candidate;
 - hosted artifact build against an existing release tag;
 - release archive extraction;
 - `--version`;
@@ -351,6 +371,10 @@ public release endpoints are not correctness dependencies.
 
 ## 10. Risks and decision points
 
+- Windows machine-contract fixtures must not depend on checkout newline
+  conversion; canonical JSON fixtures need cross-platform byte semantics.
+- Security-audit tooling must not accidentally inherit the product MSRV when
+  the audit tool itself requires a newer compiler.
 - Windows networking semantics may require platform-specific qualification.
 - Linux aarch64 cross-builds are not equivalent to target-class runtime
   evidence; native SBC evidence is required before claiming native runtime
@@ -375,10 +399,11 @@ optional/deferred milestones and do not prevent that closure.
 | Milestone | Status | Implementation plan | Closure/evidence | Blockers |
 |---|---|---|---|---|
 | M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | — |
-| M002 cross-platform binary packaging | operational evidence pending | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure + corrective C001 | existing valid release tag and hosted run evidence |
-| C001 packaging workflow correction/hosted evidence | conditionally closed | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | `plans/closure/release-operational-qualification-corrective/001-status.md` | valid release tag + hosted artifact evidence |
+| M002 cross-platform binary packaging | operational evidence pending | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure + corrective C001 | C003 closure, then existing valid release tag and hosted run evidence |
+| C001 packaging workflow correction/hosted evidence | conditionally closed | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | `plans/closure/release-operational-qualification-corrective/001-status.md` | C003 closure, then valid release tag + hosted artifact evidence |
 | C002 release boundary/documentation cleanup | closed | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | `plans/closure/release-operational-qualification-corrective/002-status.md` | — |
+| C003 CI portability and standalone release requalification | ready | `plans/implementation/release-operational-qualification-corrective/003-ci-portability-and-standalone-release-requalification.md` | pending | — |
 | historical M003 mixed installer/update | superseded | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | historical blocked disposition retained | superseded by ADR-0002 |
 | M003a Eggpack producer integration | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | pending | selected Eggpack producer interfaces not yet closure-backed |
 | M003b Eggup runtime self-update | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | pending | Eggpack manifest/interoperability + Eggup consumer adapter + product decision |
-| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | M002/C001 hosted evidence; C002 closed |
+| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | C003 closure + M002/C001 hosted evidence; C002 closed |

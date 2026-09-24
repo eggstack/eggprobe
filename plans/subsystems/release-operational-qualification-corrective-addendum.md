@@ -1,8 +1,10 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 conditionally closed; C002 ready
+Status: active; C001 conditionally closed; C002 closed; C003 ready
 
-Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
+Historical planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
+
+Current corrective evidence baseline: `cf857fc24579263611396d4d88a1ef622601d612`
 
 Historical evidence:
 
@@ -59,15 +61,52 @@ Closure target:
 
 - `plans/closure/release-operational-qualification-corrective/002-status.md`
 
-Status: ready for handoff.
+Status: closed. Closure evidence:
+
+- `plans/closure/release-operational-qualification-corrective/002-status.md`
 
 C002 is documentation/planning-adjacent cleanup only. It does not create a tag,
 publish a release, or implement Eggpack/Eggup integration.
 
-## 4. Downstream disposition
+## 4. C003 — CI portability and standalone release requalification
+
+After C002 closed, current-head CI exposed two release-qualification defects
+that were not visible in the earlier local/hosted evidence:
+
+- Windows checks out the deterministic JSON fixtures with CRLF and the contract
+  tests compare those bytes against LF-only `serde_json` output, causing two
+  otherwise semantically identical fixtures to fail;
+- the dependency-audit action attempts to build its own `cargo-audit` tooling
+  under Eggprobe's Rust 1.89 product toolchain, and the resolved audit-tool
+  dependency graph now requires a newer compiler.
+
+GitHub Actions run `36003160519` on
+`cf857fc24579263611396d4d88a1ef622601d612` is the evidence baseline.
+Ubuntu, macOS, Clippy, and the Rust 1.89 MSRV lane pass; Windows contract tests
+and the audit-tool bootstrap fail.
+
+Implementation:
+
+- `plans/implementation/release-operational-qualification-corrective/003-ci-portability-and-standalone-release-requalification.md`
+
+Closure target:
+
+- `plans/closure/release-operational-qualification-corrective/003-status.md`
+
+Status: ready for handoff.
+
+C003 is a hard first-release gate. It is intentionally local to Eggprobe:
+Eggpack producer integration and Eggup self-update remain deferred and MUST NOT
+be introduced as a workaround.
+
+## 5. Downstream disposition
 
 - Historical M003 is superseded by M003a/M003b under ADR-0002.
 - M003a Eggpack producer integration is deferred and not a first-release gate.
 - M003b Eggup runtime self-update is optional/deferred and not a first-release gate.
-- Release M004 is blocked only on C001/M002 hosted artifact qualification plus
-  C002 cleanup for the first standalone release.
+- C003 executes next and must restore a fully green current-head CI baseline.
+- After C003 closes, complete C001's remaining valid-tag hosted artifact
+  evidence and promote M002 to operationally qualified.
+- Release M004 then becomes ready for the first standalone archive release.
+- Eggpack/Eggup instability does not block this sequence and must not be worked
+  around by copying their producer/consumer responsibilities into Eggprobe.

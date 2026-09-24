@@ -1,6 +1,6 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: blocked — awaiting release artifact evidence; corrective C002 is closed
+Status: blocked — awaiting corrective C003 and release artifact evidence; corrective C002 is closed
 
 Planning baseline: historical `e55a21fe73915b7a38c2fa674807354539806c60`; refresh at execution against current release artifacts.
 
@@ -8,7 +8,9 @@ Source roadmap:
 
 - `plans/subsystems/release-operational-qualification-roadmap.md#m004--release-qualification-and-operator-documentation`
 
-Hard dependency: Release M002 closed.
+Hard dependency: Release M002 operationally qualified.
+Hard corrective dependency: Release corrective C003 closed with green
+current-head Windows, Linux, macOS, MSRV, and dependency-audit evidence.
 Conditional dependency: M003b only if runtime self-update is advertised in the
 release being qualified. M003a Eggpack producer adoption is not required for
 the first standalone archive release.
@@ -67,10 +69,15 @@ Create `plans/closure/release-operational-qualification/004-status.md` with a re
 
 For the first standalone release, this plan becomes ready when:
 
-1. Release corrective C001 obtains hosted artifact evidence against a valid
-   release tag and Release M002 is operationally qualified; and
-2. Release corrective C002 is closed with the stale ownership/documentation
+1. Release corrective C003 closes with a fully green current-head CI baseline,
+   including Windows deterministic contract tests and an audit job that
+   actually executes the Eggprobe dependency audit rather than failing to
+   bootstrap its own tooling;
+2. Release corrective C001 then obtains hosted artifact evidence against a
+   valid release tag and Release M002 is operationally qualified; and
+3. Release corrective C002 remains closed with the ownership/documentation
    cleanup complete.
 
 Eggpack producer adoption (M003a) and Eggup self-update (M003b) are not first
-release gates.
+release gates. No temporary local replacement for either shared subsystem is
+part of M004.

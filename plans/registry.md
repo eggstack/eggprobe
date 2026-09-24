@@ -30,9 +30,18 @@ implementation plans, closure records, corrective addenda, and Git history.
 
 ## Current baselines
 
-Current qualified product implementation head reviewed:
+Last closure-backed product implementation head:
 
 `54cbebbd50c269ee8b6271c45c5d124784ac54a9`
+
+Current release-corrective evidence baseline:
+
+`cf857fc24579263611396d4d88a1ef622601d612`
+
+GitHub Actions run `36003160519` at that head passes Ubuntu, macOS, Clippy,
+and the Rust 1.89 MSRV lane, but fails Windows deterministic-fixture tests due
+to CRLF/LF differences and fails the audit job while bootstrapping
+`cargo-audit` under Rust 1.89. Corrective C003 owns those findings.
 
 Release ownership realignment planning baseline:
 
@@ -49,7 +58,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Foundation diagnostic contract | closed corrective | C002 closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
 | Transport/probe engine | closed corrective | C001/C002 closed; Eggress 1.0.8 qualified | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
 | CLI/automation | closed corrective | C001 closed | `plans/subsystems/cli-automation-corrective-addendum.md` |
-| Release/packaging | active | C001 conditionally closed; C002 closed | `plans/subsystems/release-operational-qualification-roadmap.md` |
+| Release/packaging | active | C003 ready; C001 conditionally closed; C002 closed | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
 | Native path + QUIC/H3 expansion | roadmap-level | no implementation handoff | Phase 8/9 prerequisites unresolved |
@@ -58,18 +67,23 @@ post-closure findings have been handled by the registered corrective sequence.
 
 | Workstream | Milestone | Status | Plan | Handoff note |
 |---|---|---|---|---|
-| Release corrective | C002 release-boundary/documentation cleanup | closed | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | `plans/closure/release-operational-qualification-corrective/002-status.md` |
+| Release corrective | C003 CI portability and standalone release requalification | ready | `plans/implementation/release-operational-qualification-corrective/003-ci-portability-and-standalone-release-requalification.md` | Restore green Windows + audit lanes on current main; no tag/publication in this plan |
 
 ## Operational evidence gate
 
-Release corrective C001 is **conditionally closed**, not waiting on code:
+Corrective C003 is now the immediate first-release gate because current
+`main` is not fully green on the supported CI matrix. It must close before an
+intentional release tag is used as qualification evidence.
+
+Release corrective C001 remains **conditionally closed**:
 
 - plan: `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md`;
 - evidence: `plans/closure/release-operational-qualification-corrective/001-status.md`;
-- remaining condition: create/use an intentional valid release tag and obtain a
-  successful hosted packaging run with artifact/hash/native-smoke evidence.
+- remaining condition after C003 closes: create/use an intentional valid
+  release tag and obtain a successful hosted packaging run with
+  artifact/hash/native-smoke evidence.
 
-That evidence is the real first-release blocker. It is not an Eggup blocker.
+Neither gate depends on Eggup or Eggpack adoption.
 
 ## Registered blocked/deferred plans
 
@@ -77,7 +91,7 @@ That evidence is the real first-release blocker. It is not an Eggup blocker.
 |---|---|---|---|---|
 | Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | Current Eggpack HEAD `154d4a2` still has Manifest M002, Build/Qualification M001, and Bootstrap M001 ready but not closed; selected interfaces must be closure-backed |
 | Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | Current Eggpack HEAD `154d4a2` has interop M001 ready but not closed; Eggup HEAD `8937ad0` still gates adapter implementation on that closure; product decision also required |
-| Release qualification | M004 | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | M002/C001 hosted artifact evidence; Release C002 is closed |
+| Release qualification | M004 | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | C003 closure, then M002/C001 hosted artifact evidence; Release C002 is closed |
 
 ## Superseded planning
 
@@ -115,13 +129,15 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
 
 ## Current execution order
 
-1. **Release corrective C002 is closed.**
-2. Independently, when maintainers choose a first release identity/tag, complete
-   the remaining **C001 hosted evidence** and promote M002 to operationally
-   qualified.
-3. When C001/M002 evidence and C002 are closed, execute **Release M004** and
-   qualify the first standalone archive release.
-4. Do not wait for M003a or M003b to complete the first release.
+1. Execute **Release corrective C003** to restore release-grade Windows and
+   dependency-audit CI on the current standalone codebase.
+2. After C003 closes, choose an intentional first release identity/tag and
+   complete the remaining **C001 hosted evidence**, promoting M002 to
+   operationally qualified.
+3. With C003, C001/M002, and C002 closed, execute **Release M004** and qualify
+   the first standalone archive release.
+4. Do not wait for M003a or M003b to complete the first release and do not
+   create temporary Eggpack/Eggup substitutes inside Eggprobe.
 5. M003a remains blocked until the specific Eggpack interfaces selected for
    adoption are closure-backed.
 6. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
