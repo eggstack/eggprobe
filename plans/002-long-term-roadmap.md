@@ -215,12 +215,13 @@ Ship a small cross-platform binary with repeatable qualification evidence.
 
 - prebuilt Linux x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64 artifacts where CI supports them;
 - checksums and release provenance;
-- installer/update integration with shared Eggstack machinery when available;
 - shell completions;
 - release smoke tests;
 - MSRV and supported-target CI;
 - dependency/security audit;
-- operator documentation.
+- operator documentation;
+- optional later producer integration with Eggpack once the required producer interfaces are stable;
+- optional later runtime self-update through Eggup consumer deployment machinery, using Eggpack release evidence where applicable.
 
 ### Dependencies
 
@@ -230,7 +231,9 @@ Phases 0–5. Phase 6 is not required for an initial release if evidence limitat
 
 - a clean machine can run the published binary without a Rust toolchain;
 - machine-readable compatibility fixtures pass against the release build;
-- supported platform limitations are explicit.
+- supported platform limitations are explicit;
+- lack of optional Eggpack producer adoption or Eggup runtime self-update does not block an otherwise qualified standalone archive release;
+- any adopted shared release path follows ADR-0002 ownership: Eggpack for producer construction/evidence, Eggup for consumer deployment/rollback, Eggprobe for product policy.
 
 ## Phase 8 — Native path and host diagnostics
 
