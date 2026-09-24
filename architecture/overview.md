@@ -24,18 +24,18 @@ binary (`eggprobe-cli`) is a thin presentation adapter and does not own networki
 
 ## Tools
 
-- **Probes:** direct DNS (system resolver, `client` scope), direct TCP (serial Happy-Eyeballs-style address trial), direct TLS (rustls + webpki-roots, ALPN `h2,http/1.1`), Eggfetch-backed HTTP (H1/H2, custom `PolicyDialer`/`RouteDialer`, bounded 4 KiB body sample, per-phase timings explicitly unavailable).
+- **Probes:** direct DNS (system resolver, `client` scope), direct TCP (serial Happy-Eyeballs-style address trial), direct TLS (rustls + webpki-roots, ALPN `h2,http/1.1`), Eggfetch-backed HTTP (H1/H2, custom `PolicyDialer`/`RouteDialer`, bounded 4 KiB body sample, per-phase timings explicitly unavailable), and `eggprobe-native`-backed direct target route/interface/source/MTU evidence with bounded route-table candidate correlation.
 - **Routing:** listener-free Eggress client (`eggress-core`/`eggress-embed` 1.0.8, `pproxy-compat`), TCP byte-stream dialer only (no QUIC/H3), no env-proxy fallback, typed hop errors with `route_hop_index`/`route_protocol` provenance and fixed redacted messages.
 - **Assertions:** `http_status_range`, `required_http_version`, `required_alpn`, `required_tls_version`, `max_total_micros`; evaluated purely into `Finding{passed,failed,unavailable}`; HTTP 4xx/5xx stay `Ok` probes until an assertion fails them.
 - **Automation:** `run` (plan-file / `Vec<Plan>` / `{plans:[...]}`, stdin `-`, 4 MiB / 256-plan bounds, `JoinSet` concurrency 1–64 default 4, input-order NDJSON with `batch-N` execution IDs, `--fail-fast`), `compare` (direct-vs-routed, `repeat` 1–100, cold policy, nearest-rank `ceil(p*N/100)` percentiles, median delta).
 - **Presentation:** pretty JSON (single), compact NDJSON (batch), short human (fallback); stdout is machine data only under `--json`/`--ndjson`, diagnostics go to stderr; exit codes `0/1/2/3/130`.
-- **Schemas:** `cargo run -p eggprobe-core --example generate-schemas --locked` regenerates `schemas/*-0.4.json` (with pinned `const "0.4"`); `deny_unknown_fields` everywhere; `DurationMicros` integer micros as the sole duration unit.
+- **Schemas:** `cargo run -p eggprobe-core --example generate-schemas --locked` regenerates `schemas/*-0.4.json` (with pinned `const "0.4"`); `deny_unknown_fields` everywhere; `DurationMicros` integer micros as the sole duration unit. Schema `0.4` reserves additional native families (ICMP echo, direct UDP, traceroute, path-MTU) that currently dispatch as typed unsupported results until their milestones qualify.
 - **Verification:** `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, `cargo test`, `cargo +1.89.0 check`, `cargo tree`, `cargo audit`; CI quality matrix (ubuntu/macos/windows) + MSRV + audit jobs; release packaging matrix (linux x86_64/aarch64, macos x86_64/arm64, windows x86_64).
 
 ## How everything fits together
 
 ```text
-                    schemas/*.json (0.3 active)
+                    schemas/*.json (0.4 active)
                               ^
                               | generated / verified
                               |

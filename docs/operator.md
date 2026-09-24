@@ -21,6 +21,7 @@ eggprobe dns example.com --json
 eggprobe tcp example.com --port 443 --json
 eggprobe tls example.com --port 443 --json
 eggprobe http https://example.com/ --json
+eggprobe route example.com --json
 eggprobe check example.com --port 443 --url https://example.com/ --json
 ```
 
@@ -89,3 +90,38 @@ use an unverified download or replacement script as an automatic updater.
 target/probe families. It reports separate direct and routed distributions.
 Latency percentiles use nearest-rank on successful probe timings only:
 `ceil(p*N/100)`, clamped to the first sample.
+
+## Native diagnostics
+
+`eggprobe-native` is the internal backend crate for direct path and host
+evidence. Implemented primitive surface today:
+
+- DNS, TCP, TLS, and Eggfetch-backed HTTP (engine + Eggress byte-stream
+  routing);
+- `route <target>` for target-scoped local source/interface/MTU evidence
+  and bounded route-table candidate correlation. Direct-only; route
+  candidates are correlation evidence, not proof of the kernel's
+  selected policy route.
+
+Schema `0.4` reserves additional native probe families but the binary
+returns typed unsupported results for them until each milestone
+qualifies its backend:
+
+- ICMP echo — `M003`, blocked on a safe backend;
+- direct UDP service checks — `M004`, ready, not yet implemented;
+- traceroute / path tracing — `M005`, blocked on a truthful backend;
+- active path-MTU discovery — `M006`, blocked on test seams and
+  trustworthy PMTU feedback.
+
+See `plans/subsystems/native-path-host-diagnostics-roadmap.md` for the
+dependency graph and milestone disposition.
+
+## Release identity
+
+The qualified release of record is `v0.1.1` (tag at `53ea53d`); closure
+evidence is at `plans/closure/release-operational-qualification/004-status.md`.
+The current `main` branch contains unreleased Phase 8 native work
+(`6e45e85` — Native M001/M002). Release/package workflows MUST NOT publish
+or recreate the changed `main` tree under the `v0.1.1` tag. The next
+qualification cycle must select a new version before any artifact
+publication.

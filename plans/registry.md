@@ -107,38 +107,43 @@ post-closure findings have been handled by the registered corrective sequence.
 | Release corrective | C006 routed-path CryptoProvider installation | closed | `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md` | Fix at `fa8ad7c`; hosted run `36038995837` green; closure `plans/closure/release-operational-qualification-corrective/006-status.md` |
 | Native path/host diagnostics | M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | Schema 0.4 and `eggprobe-native` closed; `plans/closure/native-path-host-diagnostics/001-status.md` |
 | Native path/host diagnostics | M002 target route/interface/egress MTU | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | Target-scoped route/interface/source/MTU evidence closed; `plans/closure/native-path-host-diagnostics/002-status.md` |
-| Native path/host diagnostics corrective | C001 planning/documentation and execution realignment | ready | `plans/implementation/native-path-host-diagnostics-corrective/001-planning-documentation-and-execution-realignment.md` | Reconcile registry/docs after M001/M002 closure; remove artificial M003→M004 sequencing hold |
-| Native path/host diagnostics | M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001 is closed and M002 source/interface route seam is available; held behind sequential M003 assessment |
+| Native path/host diagnostics corrective | C001 planning/documentation and execution realignment | closed | `plans/implementation/native-path-host-diagnostics-corrective/001-planning-documentation-and-execution-realignment.md` | Documentation/planning-only corrective; closure `plans/closure/native-path-host-diagnostics-corrective/001-status.md`. M004 now independently ready after C001; M003 continues as parallel blocked research line. |
+| Native path/host diagnostics | M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001/M002 are closed; direct UDP is independent of M003 ICMP research after M001 (see native roadmap §6) |
 
-## Operational evidence gate (M004 closed)
+## Release evidence gate
 
-M004 has closed with the first standalone archive release qualified as
+Release M004 closed with the first standalone archive release qualified as
 `0.1.1` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748`;
 closure `plans/closure/release-operational-qualification/004-status.md`).
 The earlier stopped M004 execution at `25dc692` is retained as history in
-the C006 plan and the M004 closure. Neither M004 nor its C005/C006
-correctives depends on Eggup or Eggpack adoption.
+the C006 plan and the M004 closure. The qualified `v0.1.1` artifact is the
+immutable release of record; the `v0.1.0` artifact at `2760b8b` predates
+the C006 production fix and remains immutable.
 
-## Operational evidence gate
+Release corrective C001's operational condition is **satisfied** by C005
+(`plans/closure/release-operational-qualification-corrective/005-status.md`;
+intentional tag `v0.1.0` at `2760b8b`, hosted packaging run `36030784594`,
+inspected artifacts/hashes/native smoke). The C001 historical conditional
+closure remains as evidence.
 
-C004 has closed with a fully green hosted matrix (run `36015806725` on
+C004 closed with a fully green hosted matrix (run `36015806725` on
 `04c84d3`; see `plans/closure/release-operational-qualification-corrective/004-status.md`).
 
-Release corrective C001's operational condition is now **satisfied** by C005:
+Release M002 is **operationally qualified** (`plans/closure/release-operational-qualification/002-status.md` retained; its operational gate is met by C005 hosted evidence). None of these releases depends on Eggup or Eggpack adoption; the M003a/M003b Eggpack/Eggup integration paths remain blocked on their own readiness gates.
 
-- plan: `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md`;
-- historical conditional closure:
-  `plans/closure/release-operational-qualification-corrective/001-status.md`
-  (retained as evidence);
-- satisfying evidence:
-  `plans/closure/release-operational-qualification-corrective/005-status.md`
-  (intentional tag `v0.1.0` at `2760b8b`, successful hosted packaging run
-  `36030784594`, inspected artifacts/hashes/native smoke).
+## Release identity hygiene
 
-Release M002 is **operationally qualified** (historical conditional closure
-`plans/closure/release-operational-qualification/002-status.md` retained; its
-operational gate is met). Neither C005 nor C001 depends on Eggup or Eggpack
-adoption.
+The qualified release of record is `v0.1.1` (tag at `53ea53d`); it
+identifies the immutable archive published with the release M004 closure.
+The current `main` branch carries unreleased Phase 8 native work
+(Native M001/M002 at `6e45e85` plus the post-`v0.1.1` planning/diagnostic
+changes recorded by this corrective).
+
+Release/package workflows MUST NOT publish or recreate the changed
+`main` tree under the `v0.1.1` tag. The next qualification cycle must
+select a new version before artifact publication; the
+`v0.1.0` (at `2760b8b`) and `v0.1.1` (at `53ea53d`) tags are immutable
+and remain historical evidence.
 
 ## Registered blocked/deferred plans
 
@@ -191,30 +196,30 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
    run `36030784594`): first-release workflow hygiene landed, one immutable
    first-release tag qualified, every artifact/checksum/identity record
    inspected, C001 evidence satisfied, M002 operationally qualified.
-1. ~~Select the release candidate~~ — done as patch `0.1.1` (fix-forward;
+2. ~~Select the release candidate~~ — done as patch `0.1.1` (fix-forward;
    `v0.1.0` immutable and predates the C006 production fix).
-2. ~~Execute **Release corrective C006**~~ — done (`fa8ad7c`, hosted run
+3. ~~Execute **Release corrective C006**~~ — done (`fa8ad7c`, hosted run
    `36038995837`).
-3. ~~Resume **Release M004** and qualify the first standalone archive
+4. ~~Resume **Release M004** and qualify the first standalone archive
    release~~ — done: tag `v0.1.1` at `53ea53d`, hosted packaging run
    `36041400748` fully green, shipped-binary battery green, closure
    `plans/closure/release-operational-qualification/004-status.md`.
    Publication/distribution remains a separate decision (no GitHub
    Release exists).
-4. Do not wait for M003a or M003b to complete the first release and do not
+5. Do not wait for M003a or M003b to complete the first release and do not
    create temporary Eggpack/Eggup substitutes inside Eggprobe.
-4. M003a remains blocked until the specific Eggpack interfaces selected for
+6. M003a remains blocked until the specific Eggpack interfaces selected for
    adoption are closure-backed.
-5. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
+7. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
    and the Eggpack->Eggup consumer seam is stable.
-6. ~~Execute **Native M001**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/001-status.md`.
-7. ~~Execute **Native M002**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/002-status.md`.
-8. Execute **Native corrective C001** before the next capability handoff: reconcile planning/docs, release identity, and M003/M004 sequencing.
-9. After C001, **Native M004** may execute independently while M003 ICMP backend/upstream research continues in parallel.
-10. **Native M003** remains blocked until a safe backend or accepted upstream interface is qualified.
-11. Keep M005 blocked until a tracer backend preserves silent per-attempt evidence without default reverse DNS or unacceptable duplicate dependencies.
-12. Execute M006 only after the route/UDP/path test seams it depends on are closure-backed and trustworthy PMTU feedback is available.
-13. Keep routed datagram/QUIC work in Phase 9; do not reuse the byte-stream Eggress route contract for Phase 8.
+8. ~~Execute **Native M001**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/001-status.md`.
+9. ~~Execute **Native M002**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/002-status.md`.
+10. ~~Execute **Native corrective C001** before the next capability handoff~~ — closed; planning/docs/release-identity/M003↔M004 sequencing realigned; closure `plans/closure/native-path-host-diagnostics-corrective/001-status.md`.
+11. After C001, **Native M004** may execute independently while M003 ICMP backend/upstream research continues in parallel.
+12. **Native M003** remains blocked until a safe backend or accepted upstream interface is qualified.
+13. Keep M005 blocked until a tracer backend preserves silent per-attempt evidence without default reverse DNS or unacceptable duplicate dependencies.
+14. Execute M006 only after the route/UDP/path test seams it depends on are closure-backed and trustworthy PMTU feedback is available.
+15. Keep routed datagram/QUIC work in Phase 9; do not reuse the byte-stream Eggress route contract for Phase 8.
 
 ## Shared infrastructure baselines
 
@@ -254,3 +259,9 @@ baseline.
   inspection alone.
 - Do not copy Eggfetch, Eggress, Eggpack, or Eggup ownership into Eggprobe to
   bypass an interface blocker.
+- The registry is a compact active control surface. It points to closure and
+  roadmap records rather than duplicating their narratives; release-identity
+  notes stay short and link to the qualifying closure records.
+- An immutable qualified release (`vX.Y.Z` tag at a fixed commit) is never
+  rebuilt or re-published under the same tag after `main` changes. A new
+  version is selected before the next qualification cycle.

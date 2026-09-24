@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001/M002 closed, corrective C001 ready, M003 blocked, M004 ready, M005/M006 blocked
+Status: active planning; M001/M002 closed, corrective C001 closed, M003 blocked, M004 ready, M005/M006 blocked
 
 Long-term references:
 
@@ -145,7 +145,7 @@ M003 ICMP echo   M004 direct UDP
        M006 active PMTU
 ```
 
-M001 hard-depends on Phase 7 and ADR-0003. M002 hard-depends on M001. M003/M004 hard-depend on M001 and soft-depend on M002. M005 hard-depends on M001 plus backend qualification; M003/M004 are soft dependencies. M006 hard-depends on M001 and should follow M002/M004/M005 so route/datagram/path test seams exist.
+M001 hard-depends on Phase 7 and ADR-0003. M002 hard-depends on M001. M003/M004 hard-depend only on M001; they soft-depend on M002 and are parallel branches after M001, not a sequence. M005 hard-depends on M001 plus backend qualification; M003/M004 are soft dependencies. M006 hard-depends on M001 and should follow M002/M004/M005 so route/datagram/path test seams exist. The Phase 9 routed-datagram boundary remains separate from this graph.
 
 ## 7. Milestones
 
@@ -200,11 +200,13 @@ Live public traces are exploratory only.
 
 ### C001 — Planning, documentation, and execution realignment
 
-Status: ready.
+Status: closed.
 
 Plan: `plans/implementation/native-path-host-diagnostics-corrective/001-planning-documentation-and-execution-realignment.md`
 
-This corrective reconciles the registry and user-facing documentation after M001/M002 closure. It does not reopen their production behavior. It specifically removes the accidental serialization of M004 behind blocked M003: after M001, ICMP research and direct UDP are independent branches.
+Closure: `plans/closure/native-path-host-diagnostics-corrective/001-status.md`.
+
+This corrective reconciled the registry and user-facing documentation after M001/M002 closure. It does not reopen their production behavior. It removed the accidental serialization of M004 behind blocked M003: after M001, ICMP research and direct UDP are independent branches.
 
 ## 11. Completion definition
 
@@ -219,6 +221,6 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 | M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | `plans/closure/native-path-host-diagnostics/001-status.md` | — |
 | M002 target route/interface/MTU evidence | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | `plans/closure/native-path-host-diagnostics/002-status.md` | — |
 | M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | Current safe candidates fail payload/reply/error semantics; qualify an alternative first |
-| M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 closed; M002 source/interface seam closed |
+| M004 direct UDP service diagnostics | ready (parallel to M003 after M001) | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 closed; M002 source/interface seam closed; not held behind M003 |
 | M005 traceroute/path diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | pending | `tracert` 0.12.0 loses silent attempts, deduplicates hops, reverse-resolves by default, and duplicates `netdev` |
 | M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | M004 and M005 seams remain open; safe platform controls still require qualification |
