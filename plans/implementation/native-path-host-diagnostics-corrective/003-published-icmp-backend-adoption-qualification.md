@@ -1,6 +1,6 @@
 # Native Path/Host Diagnostics Corrective C003 — Published ICMP Backend Adoption Qualification
 
-Status: blocked — C002 closure plus published ping-async release
+Status: blocked — C004 closure plus upstream acceptance/merge and published ping-async release
 
 Repository baseline: `d9c954ca4967796eb322b6f4e4cde738e3f29f49`
 
@@ -8,9 +8,10 @@ Source roadmap:
 
 - `plans/subsystems/native-path-host-diagnostics-roadmap.md`
 
-Prerequisite plan:
+Prerequisite plans:
 
-- `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md`
+- historical research/prototype: `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md`
+- current corrective authority: `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md`
 
 Downstream capability plan:
 
@@ -28,16 +29,18 @@ Qualify a published crates.io `ping-async` release containing the C002-accepted 
 
 This separates two concerns cleanly:
 
-- C002 proves and upstreams the interface;
+- C002 established the upstream direction and prototype;
+- C004 completes the required semantics and durable upstream handoff;
 - C003 proves the immutable published artifact is suitable for Eggprobe;
 - M003 performs Eggprobe integration and exposes the capability.
 
 ## 2. Readiness gate
 
-C003 becomes ready only when BOTH are true:
+C003 becomes ready only when ALL are true:
 
-1. C002 has closure evidence identifying the accepted upstream commit/API;
-2. crates.io has published a release containing that commit/interface.
+1. C004 has closure evidence identifying the exact tested durable upstream commit/API;
+2. the upstream maintainer has accepted/merged that qualified surface (or an equivalent reviewed surface explicitly reconciled by C004 closure);
+3. crates.io has published a release containing that accepted interface.
 
 The source tree's `Cargo.toml` version or an untagged Git commit is not sufficient.
 

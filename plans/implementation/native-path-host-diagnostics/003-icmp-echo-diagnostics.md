@@ -1,6 +1,6 @@
 # Native M003 — ICMP Echo Diagnostics
 
-Status: blocked — corrective C002/C003 upstream enablement and published-backend qualification
+Status: blocked — corrective C004/C003 completion and published-backend qualification
 
 Repository baseline: `d9c954ca4967796eb322b6f4e4cde738e3f29f49`
 
@@ -31,13 +31,13 @@ Add bounded IPv4/IPv6 ICMP echo diagnostics with structured RTT/reply evidence, 
 
 ## Readiness and dependencies
 
-Hard dependencies: Native M001 closure plus Native corrective C002 and C003 closure. C002 owns the upstream `ping-async` evidence-contract enablement; C003 owns qualification of the immutable published crates.io release. Soft dependency: M002 for richer interface/source evidence.
+Hard dependencies: Native M001 closure plus Native corrective C004 and C003 closure. C002 remains historical research/prototype evidence; C004 owns completion of exact payload semantics, responder plumbing, and durable upstream handoff; C003 owns qualification of the immutable published crates.io release. Soft dependency: M002 for richer interface/source evidence.
 
 Implementation MUST re-inspect current `main` and dependency APIs before editing. The baseline above is planning provenance, not permission to overwrite newer work.
 
 ## Current implementation evidence
 
-Eggprobe has no implemented ICMP path; schema 0.4 reserves the request/evidence family and currently dispatches it as typed unsupported. The original review rejected published `ping-async` 1.0.2 because it did not expose the payload/responder/error semantics required by Eggprobe. A later upstream review found `ping-async` master source version 1.2.0 at `b3769ef1b1e8828cf3de14944cb2f80120b2e893` with materially improved cancellation, router-failure, Linux error-queue, Windows error, and completion-timestamp behavior, but the public interface still discards facts Eggprobe needs. Corrective C002/C003 now own that unblock. Do not substitute `ping-rs`, Synvoid filtering code, or an unpublished Git dependency.
+Eggprobe has no implemented ICMP path; schema 0.4 reserves the request/evidence family and currently dispatches it as typed unsupported. The original review rejected published `ping-async` 1.0.2 because it did not expose the payload/responder/error semantics required by Eggprobe. A later upstream review found `ping-async` master source version 1.2.0 at `b3769ef1b1e8828cf3de14944cb2f80120b2e893` with materially improved cancellation, router-failure, Linux error-queue, Windows error, and completion-timestamp behavior, but the public interface still discards facts Eggprobe needs. Corrective C004/C003 now own that unblock; the historical C002 closure is corrective-required evidence. Do not substitute `ping-rs`, Synvoid filtering code, or an unpublished Git dependency.
 
 ## Invariants
 
@@ -67,7 +67,7 @@ Add an ICMP probe through `eggprobe-native` and normalize backend results into s
 
 ## Ordered work packages
 
-1. Confirm C002/C003 closure and adopt only the exact published `ping-async` version qualified there.
+1. Confirm C004/C003 closure and adopt only the exact published `ping-async` version qualified there.
 2. Add the dependency behind `eggprobe-native`; do not expose dependency types above that crate.
 3. Implement a backend-neutral ICMP observation carrying sequence, truthful optional responder, RTT, and exact network/deadline outcome.
 4. Synthesize only bounded payload content needed to satisfy the requested `payload_bytes`; report the configured length, never payload contents.
@@ -119,7 +119,7 @@ ICMP echo produces bounded typed attempt evidence on each qualified platform and
 
 ## Stop conditions
 
-Stop if C002/C003 evidence is absent, the published dependency differs from the qualified interface, responder identity would have to be fabricated, Time Exceeded cannot be distinguished from a local deadline, expected OS errors may panic, cancellation leaks request state, or integration requires weakening Eggprobe's unsafe policy.
+Stop if C004/C003 evidence is absent, the published dependency differs from the qualified interface, responder identity would have to be fabricated, Time Exceeded cannot be distinguished from a local deadline, expected OS errors may panic, cancellation leaks request state, or integration requires weakening Eggprobe's unsafe policy.
 
 ## Closure evidence
 
@@ -127,4 +127,4 @@ Create `plans/closure/native-path-host-diagnostics/003-status.md` with backend v
 
 ## Handoff notes
 
-Keep ping narrow. C002 deliberately asks the upstream backend not to discard Time Exceeded/responder facts because they may later unblock M005, but M003 must not expand into traceroute or PMTU implementation.
+Keep ping narrow. C004 deliberately requires the upstream backend not to discard Time Exceeded/responder facts because they may later unblock M005, but M003 must not expand into traceroute or PMTU implementation.

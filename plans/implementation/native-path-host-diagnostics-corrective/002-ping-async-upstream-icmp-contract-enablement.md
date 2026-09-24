@@ -1,6 +1,6 @@
 # Native Path/Host Diagnostics Corrective C002 — ping-async Upstream ICMP Contract Enablement
 
-Status: ready
+Status: corrective required — superseded for remaining work by C004
 
 Repository baseline: `d9c954ca4967796eb322b6f4e4cde738e3f29f49`
 
@@ -19,6 +19,14 @@ Applicable ADR:
 - `plans/adrs/ADR-0003-native-diagnostics-platform-and-subject-boundary.md`
 
 Primary work class: upstream interface enablement + dependency qualification research
+
+## Corrective disposition
+
+The historical C002 execution reached a conditionally closed prototype state, but later review established that exact short-payload wire semantics, real responder plumbing, and durable remote handoff evidence were incomplete. The historical closure remains evidence; remaining work is owned by:
+
+`plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md`
+
+Do not resume C002 directly.
 
 ## 1. Objective
 
