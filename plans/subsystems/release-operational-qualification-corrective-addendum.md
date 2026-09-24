@@ -1,6 +1,6 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 conditionally closed
+Status: active; C001 conditionally closed; C002 ready
 
 Planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -36,4 +36,38 @@ This plan was dependency-ready and executed independently of Foundation C002.
 It is conditionally closed pending a hosted dispatch against an existing
 release tag; the repository currently has no tags.
 
-Release M004 remains blocked on this corrective plus the active product-correctness correctives. M003 remains independently blocked on the shared `eggup` interface and is not advertised.
+The product-correctness correctives are now closed. C001 remains operationally
+conditional on hosted artifact evidence against a valid tag.
+
+## 3. C002 — Release boundary and documentation cleanup
+
+A later cross-repo planning review established the durable producer/consumer
+boundary recorded in ADR-0002:
+
+- Eggpack owns producer release construction/evidence/bootstrap/CI;
+- Eggup owns optional consumer deployment/update transactions;
+- Eggprobe owns product policy.
+
+The historical Release M003 mixed these responsibilities and incorrectly
+appeared as a first-release Eggup blocker.
+
+Implementation:
+
+- `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md`
+
+Closure target:
+
+- `plans/closure/release-operational-qualification-corrective/002-status.md`
+
+Status: ready for handoff.
+
+C002 is documentation/planning-adjacent cleanup only. It does not create a tag,
+publish a release, or implement Eggpack/Eggup integration.
+
+## 4. Downstream disposition
+
+- Historical M003 is superseded by M003a/M003b under ADR-0002.
+- M003a Eggpack producer integration is deferred and not a first-release gate.
+- M003b Eggup runtime self-update is optional/deferred and not a first-release gate.
+- Release M004 is blocked only on C001/M002 hosted artifact qualification plus
+  C002 cleanup for the first standalone release.
