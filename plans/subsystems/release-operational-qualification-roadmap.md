@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: active; M001 closed, M002 operational evidence pending, C001 conditionally closed, C002/C003 closed historically, C004 closed, C005 ready; historical M003 superseded
+Status: active; M001 closed, M002 operationally qualified, C001 operational evidence satisfied by C005, C002/C003 closed historically, C004/C005 closed, M004 ready; historical M003 superseded
 
 Long-term references:
 
@@ -116,12 +116,15 @@ Release state:
 - current `main` `ff789d4c02d112ffb8909ba90f198ceebce1b6ad` is fully
   green in hosted CI run `36016882249`, so first-release artifact
   qualification is now the active gate;
-- C005 is registered as the execution vehicle for C001's remaining
-  operational evidence and M002 promotion. Before tagging it also removes the
-  stale Intel macOS runner dependency from `release.yml`: current GitHub
-  hosted-runner documentation lists `macos-15-intel` and
-  `macos-26-intel` as standard Intel labels, while the workflow still names
-  `macos-13`.
+- C005 has closed and supplied C001's remaining operational evidence and the
+  M002 operational promotion: tag `v0.1.0` at `2760b8b`, hosted packaging run
+  `36030784594` fully green across all five targets, independently verified
+  artifact checksums, and host-native smoke on all host-native targets (Linux
+  aarch64 build-qualified only). Evidence:
+  `plans/closure/release-operational-qualification-corrective/005-status.md`.
+  The pre-tag hygiene also replaced the stale `macos-13` Intel runner with
+  `macos-15-intel` and made the smoke plan file-based so the native Windows
+  binary can read it.
 
 Current shared-infrastructure state reviewed during the ownership correction:
 
@@ -144,10 +147,9 @@ Current shared-infrastructure state reviewed during the ownership correction:
 - future Eggpack-manifest consumption remains optional and gated on a stable
   interoperability adapter.
 
-Therefore the first Eggprobe release is blocked next by C005 first-release
-tag/hosted artifact qualification, which supplies C001's remaining evidence
-and promotes M002 to operationally qualified. It is not blocked by Eggup or
-Eggpack adoption.
+Therefore the first Eggprobe release is next gated by M004 final
+release-candidate qualification and operator-document reconciliation, now
+ready after C005. It is not blocked by Eggup or Eggpack adoption.
 
 ## 5. Target architecture
 
@@ -204,7 +206,7 @@ to qualify an ordinary standalone archive release.
 M001 CI/MSRV/release skeleton [CLOSED]
               |
               v
-M002 standalone packaging [IMPLEMENTED; OPERATIONAL EVIDENCE PENDING]
+M002 standalone packaging [OPERATIONALLY QUALIFIED via C005]
               |
               +--> C002 release-boundary/docs cleanup [CLOSED]
               |
@@ -214,13 +216,13 @@ M002 standalone packaging [IMPLEMENTED; OPERATIONAL EVIDENCE PENDING]
               C004 Windows HTTP fixture + hosted CI requalification [CLOSED]
                               |
                               v
-              C005 first-release tag + hosted packaging qualification [READY]
-                              |
-                   closes C001 remaining evidence
-                   promotes M002 operationally qualified
-                              |
-                              v
-M004 release qualification/operator docs
+              C005 first-release tag + hosted packaging qualification [CLOSED]
+                               |
+                    supplied C001 remaining evidence
+                    promoted M002 operationally qualified
+                               |
+                               v
+M004 release qualification/operator docs [READY]
               |
               v
 first standalone release
@@ -269,8 +271,10 @@ Exit conditions:
 - Linux aarch64/SBC claims distinguish build qualification from native runtime
   qualification.
 
-Status: implementation/corrective code exists; operationally pending C005,
-which owns C001's valid-tag hosted artifact evidence.
+Status: operationally qualified via C005 (tag `v0.1.0`, hosted run
+`36030784594`; see
+`plans/closure/release-operational-qualification-corrective/005-status.md`).
+Historical conditional closure retained as implementation evidence.
 
 ### Historical M003 — Shared installer/update integration
 
@@ -340,9 +344,9 @@ Exit conditions:
 - no unresolved medium-or-higher release blocker;
 - update instructions only if optional M003b is actually closed/advertised.
 
-Status: blocked on C005 closure, which must complete C001 hosted artifact
-evidence and promote M002 to operationally qualified. C004 is closed, and C002
-and the original C003 findings are closed.
+Status: ready for handoff. C005 has closed with C001 hosted artifact
+evidence and the M002 operational promotion; C004, C002, and the original
+C003 findings are closed.
 
 ## 8. Cross-cutting requirements
 
@@ -425,13 +429,13 @@ optional/deferred milestones and do not prevent that closure.
 | Milestone | Status | Implementation plan | Closure/evidence | Blockers |
 |---|---|---|---|---|
 | M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | — |
-| M002 cross-platform binary packaging | operational evidence pending | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure + corrective C001 | C005 valid-tag hosted artifact qualification |
-| C001 packaging workflow correction/hosted evidence | conditionally closed; operational completion delegated to C005 | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | `plans/closure/release-operational-qualification-corrective/001-status.md` | C005 closure |
+| M002 cross-platform binary packaging | operationally qualified | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure + C005 hosted evidence (`plans/closure/release-operational-qualification-corrective/005-status.md`: tag `v0.1.0`, run `36030784594`) | — |
+| C001 packaging workflow correction/hosted evidence | conditionally closed; operational evidence satisfied by C005 | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | `plans/closure/release-operational-qualification-corrective/001-status.md` (historical) + `plans/closure/release-operational-qualification-corrective/005-status.md` (hosted evidence) | — |
 | C002 release boundary/documentation cleanup | closed | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | `plans/closure/release-operational-qualification-corrective/002-status.md` | — |
 | C003 CI portability and standalone release requalification | closed historically; follow-up finding | `plans/implementation/release-operational-qualification-corrective/003-ci-portability-and-standalone-release-requalification.md` | `plans/closure/release-operational-qualification-corrective/003-status.md` | post-closure Windows findings owned and closed by C004 |
 | C004 Windows HTTP fixture and hosted CI requalification | closed | `plans/implementation/release-operational-qualification-corrective/004-windows-http-fixture-and-hosted-ci-requalification.md` | `plans/closure/release-operational-qualification-corrective/004-status.md` (hosted run `36015806725` fully green) | — |
-| C005 first-release tag and hosted packaging qualification | ready | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | pending | — |
+| C005 first-release tag and hosted packaging qualification | closed | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | `plans/closure/release-operational-qualification-corrective/005-status.md` (tag `v0.1.0` at `2760b8b`, hosted run `36030784594` fully green) | — |
 | historical M003 mixed installer/update | superseded | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | historical blocked disposition retained | superseded by ADR-0002 |
 | M003a Eggpack producer integration | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | pending | selected Eggpack producer interfaces not yet closure-backed |
 | M003b Eggup runtime self-update | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | pending | Eggpack manifest/interoperability + Eggup consumer adapter + product decision |
-| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | C005 closure (C001/M002 operational evidence) |
+| M004 release qualification/operator docs | ready | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | — (C005 closed; C001/M002 operational evidence supplied) |

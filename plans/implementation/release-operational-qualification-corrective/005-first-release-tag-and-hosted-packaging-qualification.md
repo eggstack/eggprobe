@@ -1,6 +1,6 @@
 # Release and Operational Qualification Corrective C005 — First-Release Tag and Hosted Packaging Qualification
 
-Status: ready for handoff
+Status: closed at `2760b8b` — see `plans/closure/release-operational-qualification-corrective/005-status.md` (tag `v0.1.0`, hosted packaging run `36030784594` fully green, all artifact checksums independently verified)
 
 Planning baseline: `ff789d4c02d112ffb8909ba90f198ceebce1b6ad`
 

@@ -62,6 +62,21 @@ C004 qualifying hosted run `36015806725` (Ubuntu `107687917563`, macOS
 
 `plans/closure/release-operational-qualification-corrective/004-status.md`
 
+C005 planning baseline:
+
+`ff789d4c02d112ffb8909ba90f198ceebce1b6ad`
+
+C005 implementation/closure head:
+
+`2760b8b8750272ad448272fa0878ca57bbd2d880` (tag `v0.1.0`)
+
+C005 qualifying hosted packaging run `36030784594` on `2760b8b` is fully
+green across all five targets with independently verified artifact
+checksums, identical release identity, and host-native smoke on all
+host-native targets (Linux aarch64 build-qualified only). Closure:
+
+`plans/closure/release-operational-qualification-corrective/005-status.md`
+
 Release ownership realignment planning baseline:
 
 `a96911854b73e055ab67ea2f7c1592796f031d58`
@@ -77,7 +92,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Foundation diagnostic contract | closed corrective | C002 closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
 | Transport/probe engine | closed corrective | C001/C002 closed; Eggress 1.0.8 qualified | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
 | CLI/automation | closed corrective | C001 closed | `plans/subsystems/cli-automation-corrective-addendum.md` |
-| Release/packaging | active | C005 ready; C004 closed; C001 conditionally closed with operational completion delegated to C005; C002 closed; C003 historical closure | `plans/subsystems/release-operational-qualification-roadmap.md` |
+| Release/packaging | active | C005 closed; C001 operational evidence satisfied; M002 operationally qualified; M004 ready; C002/C003/C004 closed | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
 | Native path + QUIC/H3 expansion | roadmap-level | no implementation handoff | Phase 8/9 prerequisites unresolved |
@@ -86,23 +101,28 @@ post-closure findings have been handled by the registered corrective sequence.
 
 | Workstream | Milestone | Status | Plan | Handoff note |
 |---|---|---|---|---|
-| Release corrective | C005 first-release tag and hosted packaging qualification | ready | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | Pre-tag release-workflow hygiene, qualify one immutable first-release tag, inspect all target artifacts/checksums/provenance, and promote C001/M002 operationally |
+| Release corrective | C005 first-release tag and hosted packaging qualification | closed | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | Tag `v0.1.0` at `2760b8b`; hosted packaging run `36030784594` fully green; closure `plans/closure/release-operational-qualification-corrective/005-status.md` |
 
 ## Operational evidence gate
 
 C004 has closed with a fully green hosted matrix (run `36015806725` on
 `04c84d3`; see `plans/closure/release-operational-qualification-corrective/004-status.md`).
 
-Release corrective C001 remains **conditionally closed**:
+Release corrective C001's operational condition is now **satisfied** by C005:
 
 - plan: `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md`;
-- evidence: `plans/closure/release-operational-qualification-corrective/001-status.md`;
-- remaining condition: intentional valid release tag + successful hosted
-  packaging run + artifact/hash/native-smoke evidence.
+- historical conditional closure:
+  `plans/closure/release-operational-qualification-corrective/001-status.md`
+  (retained as evidence);
+- satisfying evidence:
+  `plans/closure/release-operational-qualification-corrective/005-status.md`
+  (intentional tag `v0.1.0` at `2760b8b`, successful hosted packaging run
+  `36030784594`, inspected artifacts/hashes/native smoke).
 
-C005 is the current baseline-specific execution plan that owns satisfying that
-condition and promoting M002 to operationally qualified. Neither C005 nor C001
-depends on Eggup or Eggpack adoption.
+Release M002 is **operationally qualified** (historical conditional closure
+`plans/closure/release-operational-qualification/002-status.md` retained; its
+operational gate is met). Neither C005 nor C001 depends on Eggup or Eggpack
+adoption.
 
 ## Registered blocked/deferred plans
 
@@ -110,7 +130,7 @@ depends on Eggup or Eggpack adoption.
 |---|---|---|---|---|
 | Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | Current Eggpack HEAD `154d4a2` still has Manifest M002, Build/Qualification M001, and Bootstrap M001 ready but not closed; selected interfaces must be closure-backed |
 | Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | Current Eggpack HEAD `154d4a2` has interop M001 ready but not closed; Eggup HEAD `8937ad0` still gates adapter implementation on that closure; product decision also required |
-| Release qualification | M004 | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | C005 closure (supplies C001 valid-tag hosted evidence and M002 operational qualification) |
+| Release qualification | M004 | ready | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | C005 closed (C001 valid-tag hosted evidence supplied; M002 operationally qualified) |
 
 ## Superseded planning
 
@@ -148,15 +168,11 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
 
 ## Current execution order
 
-1. Execute **Release corrective C005**:
-   - clean the first-release workflow's stale Intel macOS runner/actionlint
-     issues;
-   - require green current-head CI after that correction;
-   - create one intentional immutable release tag (expected `v0.1.0` while
-     Cargo remains `0.1.0`);
-   - run hosted packaging and inspect every artifact/checksum/identity record;
-   - close C001's remaining evidence and promote M002 operationally.
-2. After C005 closes, execute **Release M004** and qualify the first standalone
+1. ~~Execute **Release corrective C005**~~ — done (`2760b8b`, tag `v0.1.0`,
+   run `36030784594`): first-release workflow hygiene landed, one immutable
+   first-release tag qualified, every artifact/checksum/identity record
+   inspected, C001 evidence satisfied, M002 operationally qualified.
+2. Execute **Release M004** (now ready) and qualify the first standalone
    archive release.
 3. Do not wait for M003a or M003b to complete the first release and do not
    create temporary Eggpack/Eggup substitutes inside Eggprobe.
@@ -190,7 +206,7 @@ baseline.
 | Transport M001-M006 + C001/C002 | closed | transport closure trees | current transport qualified against Eggress 1.0.8 |
 | CLI M001-M004 + C001 | closed | CLI closure trees | automation corrective closed |
 | Release M001 | closed | `plans/closure/release-operational-qualification/001-status.md` | retained |
-| Release M002 | historical conditional closure | `plans/closure/release-operational-qualification/002-status.md` | current operational gate is C001 hosted evidence |
+| Release M002 | operationally qualified | `plans/closure/release-operational-qualification/002-status.md` | historical conditional closure retained; operational gate met by C005 hosted evidence |
 | historical Release M003 | blocked disposition | `plans/closure/release-operational-qualification/003-status.md` | superseded by ADR-0002 |
 
 ## Planning hygiene
