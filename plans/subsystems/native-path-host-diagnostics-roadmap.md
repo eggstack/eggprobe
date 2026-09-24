@@ -210,11 +210,15 @@ This corrective reconciled the registry and user-facing documentation after M001
 
 ### C002 — ping-async upstream ICMP contract enablement
 
-Status: ready.
+Status: conditionally closed.
 
 Plan: `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md`
 
+Closure: `plans/closure/native-path-host-diagnostics-corrective/002-status.md`.
+
 C002 owns the preferred M003 unblock: qualify current `ping-async` upstream and land an additive public interface that preserves exact payload-length semantics, truthful responder identity, and structured network outcomes distinct from local deadline expiry. Eggsec currently has no reusable echo primitive; Synvoid's ICMP work is filtering/platform reference material, not a suitable Eggprobe dependency.
+
+The upstream-ready additive branch (`eggprobe/c002-additive-evidence` at `968cdec0654c2c7ef674750aba0513df071a6aba` from upstream `b3769ef1b1e8828cf3de14944cb2f80120b2e893`) adds `IcmpOutcome`, `IcmpEchoReply::responder`, `IcmpEchoReply::outcome`, `IcmpEchoRequestor::with_payload_len`, and the supporting `PING_MIN_REQUEST_DATA_LENGTH` / `PING_MAX_REQUEST_DATA_LENGTH` bounds. It compiles and passes the upstream test suite on every Eggprobe target (Linux x86_64/aarch64, macOS x86_64/arm64, Windows x86_64 MSVC/GNU); clippy with `-D warnings` is clean. PR description and patch file are prepared; upstream review/merge + crates.io publication remain the explicit C003 readiness gate.
 
 ### C003 — Published ICMP backend adoption qualification
 
@@ -236,7 +240,7 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 |---|---|---|---|---|
 | M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | `plans/closure/native-path-host-diagnostics/001-status.md` | — |
 | M002 target route/interface/MTU evidence | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | `plans/closure/native-path-host-diagnostics/002-status.md` | — |
-| C002 ping-async upstream ICMP enablement | ready | `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md` | pending | — |
+| C002 ping-async upstream ICMP enablement | conditionally closed | `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md` | `plans/closure/native-path-host-diagnostics-corrective/002-status.md` | Upstream merge + crates.io publication of the accepted additive surface |
 | C003 published ICMP backend qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | pending | C002 closure + published crates.io release |
 | M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | C002 + C003 closure |
 | M004 direct UDP service diagnostics | ready (parallel to M003 after M001) | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 closed; M002 source/interface seam closed; not held behind M003 |
