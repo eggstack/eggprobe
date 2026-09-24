@@ -1,6 +1,6 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: blocked — awaiting corrective C004, then C001 valid-tag hosted artifact evidence
+Status: blocked — awaiting C001 valid-tag hosted artifact evidence (C004 closed at `04c84d3`, run `36015806725`)
 
 Planning baseline: historical `e55a21fe73915b7a38c2fa674807354539806c60`; refresh at execution against current release artifacts.
 
@@ -10,10 +10,11 @@ Source roadmap:
 
 Hard dependency: Release M002 operationally qualified.
 Corrective dependencies: Release corrective C002 is closed. C003 remains
-historical closure evidence for its CRLF/audit corrections, but post-closure
-hosted run `36008924756` exposed an additional Windows HTTP engine-fixture
-failure. Release corrective C004 must close with a fully green hosted matrix
-before M004 can execute.
+historical closure evidence for its CRLF/audit corrections, and release
+corrective C004 is closed with a fully green hosted matrix (closure:
+`plans/closure/release-operational-qualification-corrective/004-status.md`,
+run `36015806725`). M004 now waits only on C001 valid-tag hosted artifact
+evidence.
 Conditional dependency: M003b only if runtime self-update is advertised in the
 release being qualified. M003a Eggpack producer adoption is not required for
 the first standalone archive release.
@@ -72,14 +73,15 @@ Create `plans/closure/release-operational-qualification/004-status.md` with a re
 
 For the first standalone release, this plan becomes ready when:
 
-1. Release corrective C004 closes with a fully green hosted CI matrix,
+1. Release corrective C004 is closed with a fully green hosted CI matrix
+   (`plans/closure/release-operational-qualification-corrective/004-status.md`),
    including Windows proof that successfully observed HTTP error responses
    remain probe-success observations while assertions can fail independently;
 2. Release corrective C001 then obtains hosted artifact evidence against a
    valid release tag and Release M002 is operationally qualified; and
 3. Release corrective C002 remains closed. C003 remains historical evidence
-   for the CRLF/audit defects it fixed, with the later Windows finding tracked
-   through C004.
+   for the CRLF/audit defects it fixed, with the later Windows findings
+   closed through C004.
 
 Eggpack producer adoption (M003a) and Eggup self-update (M003b) are not first
 release gates. No temporary local replacement for either shared subsystem is

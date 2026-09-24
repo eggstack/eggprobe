@@ -1,6 +1,6 @@
 # Release and Operational Qualification Corrective C004 — Windows HTTP Fixture and Hosted CI Requalification
 
-Status: ready for handoff
+Status: closed at `04c84d3` — see `plans/closure/release-operational-qualification-corrective/004-status.md` (hosted run `36015806725` fully green)
 
 Planning baseline: `23da04ec32d3981aa0cb899d4d5b1d120e66f75e`
 

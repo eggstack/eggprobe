@@ -1,6 +1,6 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 conditionally closed/on hold; C002 closed; C003 closed historically; C004 ready
+Status: active; C001 conditionally closed/released from hold; C002 closed; C003 closed historically; C004 closed
 
 Historical planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -133,7 +133,21 @@ Closure target:
 
 - `plans/closure/release-operational-qualification-corrective/004-status.md`
 
-Status: ready for handoff.
+Status: closed. Closure evidence:
+
+- `plans/closure/release-operational-qualification-corrective/004-status.md`
+
+Hosted run `36015806725` on closure head `04c84d3` is fully green
+(Ubuntu `107687917563`, macOS `107687917768`, Windows `107687917787`,
+MSRV `107687917366`, audit `107687917580`). Two Windows-only
+test-fixture defects were corrected with no production change: the 503
+fixture now drains request headers (bounded), flushes, and shuts down
+orderly instead of write-and-drop (Windows RST discarded the queued
+response); the refused-hop probe retries on fresh ports with a 6 s
+per-attempt dial budget because the hosted Windows runner delays RST
+for closed loopback ports by ~2 s. Probe-versus-assertion semantics
+(503 observed as `Ok` evidence, 2xx finding `Failed`) are preserved and
+more strongly asserted.
 
 C004 is now the immediate first-release gate. It does not create a release tag
 and does not adopt Eggpack or Eggup.
@@ -144,10 +158,15 @@ and does not adopt Eggpack or Eggup.
 - M003a Eggpack producer integration is deferred and not a first-release gate.
 - M003b Eggup runtime self-update is optional/deferred and not a first-release gate.
 - C003 remains historical closure evidence for the CRLF/audit findings it
-  corrected; C004 owns the later Windows HTTP finding.
-- Execute and close C004 before creating/using the first release tag.
-- After C004 closes, resume C001's remaining valid-tag hosted artifact evidence,
-  which promotes M002 to operationally qualified.
-- Release M004 then becomes ready for the first standalone archive release.
+  corrected; C004 owns the later Windows HTTP fixture and refused-hop
+  findings and is now closed.
+- C004 has closed with a fully green hosted matrix; do not create
+  further tags until C001's valid-tag hosted packaging evidence exists.
+- C001 is released from hold: its remaining condition is creating/using
+  an intentional valid release tag and obtaining the successful hosted
+  packaging run with artifact/hash/native-smoke evidence, which
+  promotes M002 to operationally qualified.
+- Release M004 remains blocked until that C001/M002 operational
+  evidence completes.
 - Eggpack/Eggup instability does not block this sequence and must not be worked
   around by copying their producer/consumer responsibilities into Eggprobe.
