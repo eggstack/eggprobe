@@ -29,6 +29,7 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Dns(PrimitiveArgs),
+    Route(PrimitiveArgs),
     Tcp(PrimitiveArgs),
     Tls(TlsArgs),
     Http(HttpArgs),
@@ -196,6 +197,9 @@ pub async fn execute(cli: Cli) -> Result<(i32, String), CliError> {
     };
     match command {
         Command::Dns(args) => run_single(plan_for_dns(&args)?, args.json, args.strict_target).await,
+        Command::Route(args) => {
+            run_single(plan_for_route(&args)?, args.json, args.strict_target).await
+        }
         Command::Tcp(args) => run_single(plan_for_tcp(&args)?, args.json, args.strict_target).await,
         Command::Tls(args) => {
             run_single(
@@ -426,6 +430,15 @@ fn plan_for_dns(args: &PrimitiveArgs) -> Result<ProbePlan, String> {
         target(&args.target, None)?,
         route(args.via.as_deref())?,
         vec![ProbeSpec::Dns],
+        args.timeout_ms,
+        vec![],
+    ))
+}
+fn plan_for_route(args: &PrimitiveArgs) -> Result<ProbePlan, String> {
+    Ok(base(
+        target(&args.target, args.port)?,
+        route(args.via.as_deref())?,
+        vec![ProbeSpec::Route],
         args.timeout_ms,
         vec![],
     ))

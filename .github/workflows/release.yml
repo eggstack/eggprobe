@@ -99,10 +99,10 @@ jobs:
             bin="target/$target/release/eggprobe"
           fi
           "$bin" --version
-          printf '%s\n' '{"schema_version":"0.3","target":{"host":"127.0.0.1"},"route":{"kind":"direct"},"probes":[],"execution":{"deadline":1000000,"repetitions":1,"retries":0},"assertions":[]}' > smoke-plan.json
+          printf '%s\n' '{"schema_version":"0.4","target":{"host":"127.0.0.1"},"route":{"kind":"direct"},"probes":[],"execution":{"deadline":1000000,"repetitions":1,"retries":0},"assertions":[]}' > smoke-plan.json
           "$bin" run smoke-plan.json --ndjson > smoke.jsonl
           test "$(wc -l < smoke.jsonl | tr -d ' ')" = 1
-          jq -e '.schema_version == "0.3" and .status == "ok" and .route.kind == "direct"' smoke.jsonl
+          jq -e '.schema_version == "0.4" and .status == "ok" and .route.kind == "direct"' smoke.jsonl
 
       - name: Package and verify archive
         shell: bash

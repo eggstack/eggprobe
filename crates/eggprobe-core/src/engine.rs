@@ -131,6 +131,11 @@ impl ProbeEngine {
             ProbeSpec::Tcp { .. } => ProbeKind::Tcp,
             ProbeSpec::Tls { .. } => ProbeKind::Tls,
             ProbeSpec::Http { .. } => ProbeKind::Http,
+            ProbeSpec::Route => ProbeKind::Route,
+            ProbeSpec::IcmpEcho { .. } => ProbeKind::IcmpEcho,
+            ProbeSpec::Udp { .. } => ProbeKind::Udp,
+            ProbeSpec::Trace { .. } => ProbeKind::Trace,
+            ProbeSpec::PathMtu { .. } => ProbeKind::PathMtu,
         };
         let is_http = kind == ProbeKind::Http;
         let outcome = match spec {
@@ -141,6 +146,28 @@ impl ProbeEngine {
                     .await
             }
             ProbeSpec::Http { url, method } => self.http(plan, url, method, deadline_at).await,
+            ProbeSpec::Route => self.route(plan).await,
+            ProbeSpec::IcmpEcho { .. }
+            | ProbeSpec::Udp { .. }
+            | ProbeSpec::Trace { .. }
+            | ProbeSpec::PathMtu { .. } => {
+                return ProbeResult {
+                    kind,
+                    status: ProbeStatus::Unsupported,
+                    timing: Some(Timing {
+                        total: elapsed_since(started),
+                        phases: vec![],
+                    }),
+                    error: Some(simple_error(
+                        DiagnosticErrorKind::Unsupported,
+                        DiagnosticStage::Other,
+                        "native capability is not available in this build",
+                    )),
+                    evidence: None,
+                    unavailable: vec![],
+                    findings: vec![],
+                };
+            }
         };
         let elapsed = DurationMicros::from_micros(
             u64::try_from(started.elapsed().as_micros().min(u128::from(u64::MAX)))
@@ -169,7 +196,11 @@ impl ProbeEngine {
             },
             Err(error) => ProbeResult {
                 kind,
-                status: ProbeStatus::Failed,
+                status: if error.kind == DiagnosticErrorKind::Unsupported {
+                    ProbeStatus::Unsupported
+                } else {
+                    ProbeStatus::Failed
+                },
                 timing: Some(Timing {
                     total: elapsed,
                     phases: vec![],
@@ -188,6 +219,97 @@ impl ProbeEngine {
         port: u16,
     ) -> Result<Vec<std::net::SocketAddr>, DiagnosticError> {
         resolve_addresses(self.target_policy, host, port).await
+    }
+
+    async fn route(&self, plan: &ProbePlan) -> Result<ProbeEvidence, DiagnosticError> {
+        if !matches!(plan.route, RouteSpec::Direct) {
+            return Err(simple_error(
+                DiagnosticErrorKind::Unsupported,
+                DiagnosticStage::RouteInspection,
+                "native diagnostics require the direct route",
+            ));
+        }
+        let destination = self
+            .addresses(&plan.target.host, plan.target.port.unwrap_or(33434))
+            .await?
+            .into_iter()
+            .next()
+            .expect("address resolver returns a non-empty list")
+            .ip();
+        if destination.is_unspecified()
+            || destination.is_multicast()
+            || matches!(destination, IpAddr::V4(address) if address == std::net::Ipv4Addr::BROADCAST)
+            || matches!(destination, IpAddr::V6(address) if (address.segments()[0] & 0xffc0) == 0xfe80)
+        {
+            return Err(simple_error(
+                DiagnosticErrorKind::Policy,
+                DiagnosticStage::RouteInspection,
+                "destination address class is not supported",
+            ));
+        }
+        let observed = eggprobe_native::inspect_route(destination)
+            .await
+            .map_err(|error| {
+                let kind = match error.kind {
+                    eggprobe_native::NativeErrorKind::PermissionDenied => {
+                        DiagnosticErrorKind::PermissionDenied
+                    }
+                    eggprobe_native::NativeErrorKind::Unsupported => {
+                        DiagnosticErrorKind::Unsupported
+                    }
+                    eggprobe_native::NativeErrorKind::Timeout => DiagnosticErrorKind::Timeout,
+                    eggprobe_native::NativeErrorKind::Unreachable => {
+                        DiagnosticErrorKind::NetworkUnreachable
+                    }
+                    eggprobe_native::NativeErrorKind::Io => DiagnosticErrorKind::Io,
+                };
+                simple_error(
+                    kind,
+                    DiagnosticStage::RouteInspection,
+                    "route inspection failed",
+                )
+            })?;
+        let correlation = if observed.ambiguous {
+            crate::domain::probe::RouteCorrelation::Ambiguous
+        } else if observed.source.is_some() && observed.interface.is_some() {
+            crate::domain::probe::RouteCorrelation::ObservedSource
+        } else if !observed.candidates.is_empty() {
+            crate::domain::probe::RouteCorrelation::CorrelatedCandidates
+        } else {
+            crate::domain::probe::RouteCorrelation::Unavailable
+        };
+        Ok(ProbeEvidence::Route(crate::domain::probe::RouteEvidence {
+            target: destination.to_string(),
+            source: observed.source.map(|address| address.to_string()),
+            interface: observed.interface.map(|interface| {
+                crate::domain::probe::InterfaceEvidence {
+                    index: Some(interface.index),
+                    name: Some(interface.name),
+                    addresses: interface
+                        .addresses
+                        .into_iter()
+                        .map(|address| address.to_string())
+                        .collect(),
+                    up: Some(interface.up),
+                    mtu: interface.mtu,
+                }
+            }),
+            routes: observed
+                .candidates
+                .into_iter()
+                .map(|candidate| crate::domain::probe::RouteCandidate {
+                    destination: candidate.destination,
+                    interface_index: candidate.interface_index,
+                    gateway: candidate.gateway.map(|address| address.to_string()),
+                    metric: candidate.metric,
+                    table: candidate.table,
+                    protocol: candidate.protocol,
+                    scope: candidate.scope,
+                })
+                .collect(),
+            routes_truncated: observed.candidates_truncated,
+            correlation,
+        }))
     }
 
     async fn dns(&self, plan: &ProbePlan) -> Result<ProbeEvidence, DiagnosticError> {
@@ -893,6 +1015,11 @@ fn deadline_results(plan: &ProbePlan) -> Vec<ProbeResult> {
                 ProbeSpec::Tcp { .. } => ProbeKind::Tcp,
                 ProbeSpec::Tls { .. } => ProbeKind::Tls,
                 ProbeSpec::Http { .. } => ProbeKind::Http,
+                ProbeSpec::Route => ProbeKind::Route,
+                ProbeSpec::IcmpEcho { .. } => ProbeKind::IcmpEcho,
+                ProbeSpec::Udp { .. } => ProbeKind::Udp,
+                ProbeSpec::Trace { .. } => ProbeKind::Trace,
+                ProbeSpec::PathMtu { .. } => ProbeKind::PathMtu,
             },
             status: ProbeStatus::Failed,
             timing: None,
@@ -1058,6 +1185,11 @@ fn tool() -> ToolProvenance {
 }
 fn execution_id() -> String {
     format!("exec-{}", NEXT_EXECUTION_ID.fetch_add(1, Ordering::Relaxed))
+}
+fn elapsed_since(started: Instant) -> DurationMicros {
+    DurationMicros::from_micros(
+        u64::try_from(started.elapsed().as_micros().min(u128::from(u64::MAX))).unwrap_or(u64::MAX),
+    )
 }
 fn simple_error(
     kind: DiagnosticErrorKind,

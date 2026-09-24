@@ -48,9 +48,9 @@ Notes:
 
 ## Contract
 
-The active contract is schema `0.3`, described by `schemas/plan-0.3.json`
-and `schemas/report-0.3.json`. Rust types in `eggprobe-core` are
-authoritative; the binary rejects plan versions other than `0.3`.
+The active contract is schema `0.4`, described by `schemas/plan-0.4.json`
+and `schemas/report-0.4.json`. Rust types in `eggprobe-core` are
+authoritative; the binary rejects plan versions other than `0.4`.
 Route credentials are input-only: reports carry only
 `{"kind":"eggress"}` and human/debug output prints `eggress(<redacted>)`.
 

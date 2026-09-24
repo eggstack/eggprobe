@@ -96,7 +96,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Release/packaging | active | M004 closed (first standalone release qualified as 0.1.1); C001–C006 closed; M002 operationally qualified | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
-| Native path/host diagnostics | active planning | M001 ready; M002-M006 dependency-ordered | `plans/subsystems/native-path-host-diagnostics-roadmap.md` |
+| Native path/host diagnostics | active | M001/M002 closed; M003 backend blocked; M004 ready; M005/M006 blocked | `plans/subsystems/native-path-host-diagnostics-roadmap.md` |
 | QUIC/H3 expansion | roadmap-level | routed datagram composition remains separate from Phase 8 | Phase 9 prerequisites unresolved |
 
 ## Dependency-ready work
@@ -105,7 +105,9 @@ post-closure findings have been handled by the registered corrective sequence.
 |---|---|---|---|---|
 | Release corrective | C005 first-release tag and hosted packaging qualification | closed | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | Tag `v0.1.0` at `2760b8b`; hosted packaging run `36030784594` fully green; closure `plans/closure/release-operational-qualification-corrective/005-status.md` |
 | Release corrective | C006 routed-path CryptoProvider installation | closed | `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md` | Fix at `fa8ad7c`; hosted run `36038995837` green; closure `plans/closure/release-operational-qualification-corrective/006-status.md` |
-| Native path/host diagnostics | M001 native contract/platform substrate | ready | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | Advance to schema 0.4, introduce `eggprobe-native`, qualify safe dependencies/MSRV, establish direct-only native capability semantics |
+| Native path/host diagnostics | M001 native contract/platform substrate | closing | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | Schema 0.4, `eggprobe-native`, dependency/API decisions, and direct-only native semantics implemented; closure evidence in progress |
+| Native path/host diagnostics | M002 target route/interface/egress MTU | closing | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | Target-scoped route CLI and source/interface/MTU/candidate evidence implemented; hosted platform evidence in progress |
+| Native path/host diagnostics | M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001 is closed and M002 source/interface route seam is available; held behind sequential M003 assessment |
 
 ## Operational evidence gate (M004 closed)
 
@@ -144,11 +146,9 @@ adoption.
 | Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | Current Eggpack HEAD `154d4a2` still has Manifest M002, Build/Qualification M001, and Bootstrap M001 ready but not closed; selected interfaces must be closure-backed |
 | Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | Current Eggpack HEAD `154d4a2` has interop M001 ready but not closed; Eggup HEAD `8937ad0` still gates adapter implementation on that closure; product decision also required |
 | Release qualification | M004 | closed | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | First standalone release qualified as `0.1.1` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748`); closure `plans/closure/release-operational-qualification/004-status.md` |
-| Native diagnostics | M002 route/interface/egress MTU | blocked | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | M001 closure |
-| Native diagnostics | M003 ICMP echo | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | M001 closure + qualified ICMP backend |
-| Native diagnostics | M004 direct UDP | blocked | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001 closure |
-| Native diagnostics | M005 traceroute/path | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | M001 closure + tracer backend privilege/MSRV/footprint qualification |
-| Native diagnostics | M006 active PMTU | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | M001 plus M002/M004/M005 supporting seams |
+| Native diagnostics | M003 ICMP echo | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | Current `ping-async` lacks configurable payload/responder evidence; `ping-rs` has an async Windows panic on handle failure. Qualify a safe backend or upstream interface |
+| Native diagnostics | M005 traceroute/path | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | `tracert` 0.12.0 omits silent attempts, deduplicates responders, reverse-resolves by default, and adds a second `netdev` line |
+| Native diagnostics | M006 active PMTU | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | M004/M005 support seams remain open; trustworthy platform PMTU controls unqualified |
 
 ## Superseded planning
 
@@ -206,9 +206,12 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
    adoption are closure-backed.
 5. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
    and the Eggpack->Eggup consumer seam is stable.
-6. Execute **Native M001** next: schema 0.4, `eggprobe-native`, native capability/error contract, fake backend, and dependency/MSRV qualification.
-7. After M001 closure, advance M002-M005 in dependency order; M003/M004 may proceed in parallel once their selected backends are qualified.
-8. Execute M006 PMTU only after the route/UDP/path test seams it depends on are closure-backed.
+6. ~~Execute **Native M001**~~ — closed with schema 0.4, `eggprobe-native`, and qualified route/interface dependencies.
+7. ~~Execute **Native M002**~~ — closed with target-scoped route/interface evidence and host-native CI qualification.
+8. Stop before **Native M003**: the reviewed ICMP dependencies do not meet required evidence and error semantics. Resume only after a safe backend or accepted upstream interface is qualified.
+9. M004 is ready after M001/M002 closure, but remains unexecuted until the sequential M003 blocker is resolved.
+10. Keep M005 blocked until a tracer backend preserves silent per-attempt evidence without default reverse DNS or unacceptable duplicate dependencies.
+11. Execute M006 only after the route/UDP/path test seams it depends on are closure-backed and trustworthy PMTU feedback is available.
 9. Keep routed datagram/QUIC work in Phase 9; do not reuse the byte-stream Eggress route contract for Phase 8.
 
 ## Shared infrastructure baselines

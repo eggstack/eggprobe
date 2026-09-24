@@ -81,6 +81,33 @@ impl ProbePlan {
                         }
                     }
                 }
+                ProbeSpec::Udp { port: 0, .. } => return Err(PlanValidationError::InvalidPort),
+                ProbeSpec::IcmpEcho {
+                    count,
+                    payload_bytes,
+                } if !(1..=10).contains(count) || *payload_bytes > 1024 => {
+                    return Err(PlanValidationError::InvalidNativeBounds);
+                }
+                ProbeSpec::Udp { payload, .. } if payload.len() > 1200 => {
+                    return Err(PlanValidationError::InvalidNativeBounds);
+                }
+                ProbeSpec::Trace {
+                    max_hops,
+                    attempts_per_hop,
+                } if !(1..=64).contains(max_hops) || !(1..=5).contains(attempts_per_hop) => {
+                    return Err(PlanValidationError::InvalidNativeBounds);
+                }
+                ProbeSpec::PathMtu {
+                    min_bytes,
+                    max_bytes,
+                    attempts,
+                } if *min_bytes < 68
+                    || min_bytes >= max_bytes
+                    || *max_bytes > 9000
+                    || !(1..=10).contains(attempts) =>
+                {
+                    return Err(PlanValidationError::InvalidNativeBounds);
+                }
                 _ => {}
             }
         }
@@ -101,7 +128,7 @@ pub enum PlanValidationError {
     #[error("execution repetitions must be greater than zero")]
     ZeroRepetitions,
     /// Retries are reserved for a future explicit attempt contract.
-    #[error("retries are not supported by schema 0.3 (requested {0})")]
+    #[error("retries are not supported by schema 0.4 (requested {0})")]
     UnsupportedRetries(u32),
     /// An inclusive HTTP assertion range cannot have its lower bound above its upper bound.
     #[error("HTTP status assertion minimum {min} exceeds maximum {max}")]
@@ -114,6 +141,9 @@ pub enum PlanValidationError {
     /// A port-oriented probe cannot use port zero.
     #[error("probe port must be between 1 and 65535")]
     InvalidPort,
+    /// Native probe bounds exceed the public bounded-work contract.
+    #[error("native probe bounds are invalid or exceed configured limits")]
+    InvalidNativeBounds,
     /// An HTTP URL host disagrees with the authoritative plan target.
     #[error("HTTP target host {actual:?} disagrees with plan target {expected:?}")]
     TargetMismatch {
@@ -203,6 +233,60 @@ pub enum ProbeSpec {
         #[serde(default = "default_http_method")]
         method: String,
     },
+    /// Inspect local route and interface evidence for the target.
+    Route,
+    /// Send bounded ICMP echo attempts.
+    IcmpEcho {
+        /// Number of echo attempts (1–10).
+        #[serde(default = "default_echo_count")]
+        count: u8,
+        /// Echo payload length in bytes (0–1024).
+        #[serde(default = "default_echo_payload")]
+        payload_bytes: u16,
+    },
+    /// Send a direct UDP datagram and optionally observe a response.
+    Udp {
+        /// Destination port.
+        port: u16,
+        /// Request payload, bounded to 1200 bytes.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        payload: Vec<u8>,
+        /// Whether to wait for one response.
+        #[serde(default)]
+        receive: bool,
+    },
+    /// Trace a bounded direct path.
+    Trace {
+        /// Maximum TTL/hop count (1–64).
+        #[serde(default = "default_trace_hops")]
+        max_hops: u8,
+        /// Attempts per TTL (1–5).
+        #[serde(default = "default_trace_attempts")]
+        attempts_per_hop: u8,
+    },
+    /// Discover path MTU with bounded active probes.
+    PathMtu {
+        /// Smallest packet size in bytes.
+        min_bytes: u16,
+        /// Largest packet size in bytes.
+        max_bytes: u16,
+        /// Attempts per size (1–10).
+        #[serde(default = "default_echo_count")]
+        attempts: u8,
+    },
+}
+
+const fn default_echo_count() -> u8 {
+    3
+}
+const fn default_echo_payload() -> u16 {
+    56
+}
+const fn default_trace_hops() -> u8 {
+    30
+}
+const fn default_trace_attempts() -> u8 {
+    3
 }
 
 fn default_http_method() -> String {

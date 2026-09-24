@@ -1,6 +1,6 @@
 # Native M003 — ICMP Echo Diagnostics
 
-Status: blocked — ready after M001 closure
+Status: blocked — safe ICMP backend qualification
 
 Repository baseline: `8055730df76f187d94ff83b810d93cb935bb8c37`
 
@@ -37,7 +37,7 @@ Implementation MUST re-inspect current `main` and dependency APIs before editing
 
 ## Current implementation evidence
 
-Eggprobe has no ICMP path. Research identified `ping-async` as a focused candidate: Windows uses native IP Helper ICMP APIs; Linux/macOS use ICMP sockets, with Linux availability dependent on host ping-group/raw-socket policy.
+Eggprobe has no ICMP path. Current review found `ping-async` 1.0.2 does not accept a caller-selected payload or report a separate responder address. The alternative `ping-rs` 0.1.2 async Windows path unwraps handle creation, so permission/OS failures may panic; it also exposes OS error display text. Neither candidate qualifies. M001 and M002 are closed, but implementation remains blocked until a safe backend or accepted upstream API supplies bounded payload, structured reply/error evidence, cancellation, and permission normalization.
 
 ## Invariants
 

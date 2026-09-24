@@ -75,16 +75,28 @@ It does not take ownership of Eggress proxy/datagram protocols, Eggfetch HTTP/QU
 
 ## 4. Current state and dependency evidence
 
-Eggprobe 0.1.1 has DNS/TCP/TLS/HTTP plan/evidence families only. Schema `0.3` is current and exact-version validation is enforced. `ProbeEngine` owns the outer deadline and target policy. The workspace contains `eggprobe-core` and `eggprobe-cli` and forbids unsafe code.
+Eggprobe 0.1.1 remains the product version. Schema `0.4` is current and exact-version validation is enforced. `ProbeEngine` owns the outer deadline and target policy; `eggprobe-native` owns platform adapters. Route inspection is implemented, while ICMP/UDP/trace/PMTU request families remain explicitly unsupported until their milestones qualify.
 
-Research at the 2026-09-24 planning baseline identified candidate dependencies:
+Research and implementation qualification at the current baseline identified
+these dependencies and decisions:
 
 - `netdev` 0.46.x for cross-platform interface metadata;
 - `netroute` 0.4.x for read-only Linux/macOS/Windows route-table enumeration;
 - `ping-async` 1.2.x repository line for asynchronous ICMP echo using native/safe adapters subject to host policy;
 - `tracert` 0.12.x for focused async ICMP/UDP traceroute with Linux capability and Windows firewall caveats.
 
-These are candidates, not approved pins. Every adopted crate must build under Rust 1.89, pass dependency/security review, expose sufficient structured evidence, and have acceptable transitive footprint.
+| Crate | Decision | Qualification evidence |
+|---|---|---|
+| `netdev` 0.46.3 | accepted for M002 | MIT; no declared `rust-version`; workspace MSRV check passed on 1.89.0; target checks passed for Linux x86_64/aarch64, macOS x86_64/arm64, and Windows x86_64; exposes interface index/name/addresses/state/MTU. Default features are disabled to avoid unrelated metadata enrichment. |
+| `netroute` 0.4.0 | accepted for M002 | MIT; no declared `rust-version`; workspace MSRV check passed on 1.89.0; exposes structured read-only route entries on supported target builds. Enumeration is correlation evidence, not an authoritative policy-route lookup. |
+| `ping-async` 1.0.2 | rejected for M003 | Current crates.io version differs from the plan's noted 1.2.x line. Its public request API does not accept payload bytes/length and its reply exposes destination/status/RTT without a separate responder address. |
+| `ping-rs` 0.1.2 | rejected alternative for M003 | MIT, no declared MSRV. The async Windows path unwraps ICMP handle creation and can panic on permission/OS failure; its OS error includes display text. This does not meet no-panic, safe-normalization requirements. |
+| `tracert` 0.12.0 | rejected for M005 | MIT, edition 2024; public results omit silent per-hop attempts, deduplicate responders, and reverse-resolve the destination unconditionally. It also requires a separate `netdev` 0.41.x alongside 0.46.3. |
+
+The dependency audit found no new vulnerability; it reported one pre-existing
+allowed unmaintained-crate advisory (`paste` via existing dependencies).
+M003 remains blocked until a safe backend or accepted upstream interface meets
+payload, structured-outcome, permission, responder, and cancellation needs.
 
 Eggress upstream also contains listener-free UDP association work, but Phase 8 does not consume it.
 
@@ -194,9 +206,9 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 
 | Milestone | Status | Implementation plan | Closure | Blocker |
 |---|---|---|---|---|
-| M001 native contract/platform substrate | ready | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | pending | — |
-| M002 target route/interface/MTU evidence | blocked | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | pending | M001 |
-| M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | M001 |
-| M004 direct UDP service diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 |
-| M005 traceroute/path diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | pending | M001 + backend qualification |
-| M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | M001 + M002/M004/M005 seams |
+| M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | `plans/closure/native-path-host-diagnostics/001-status.md` | — |
+| M002 target route/interface/MTU evidence | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | `plans/closure/native-path-host-diagnostics/002-status.md` | — |
+| M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | Current safe candidates fail payload/reply/error semantics; qualify an alternative first |
+| M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 closed; M002 source/interface seam closed |
+| M005 traceroute/path diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | pending | `tracert` 0.12.0 loses silent attempts, deduplicates hops, reverse-resolves by default, and duplicates `netdev` |
+| M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | M004 and M005 seams remain open; safe platform controls still require qualification |

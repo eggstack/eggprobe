@@ -1,6 +1,6 @@
 # Native M001 — Native Contract and Platform Substrate
 
-Status: ready
+Status: closing
 
 Repository baseline: `8055730df76f187d94ff83b810d93cb935bb8c37`
 

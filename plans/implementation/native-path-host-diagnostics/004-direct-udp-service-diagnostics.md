@@ -1,6 +1,6 @@
 # Native M004 — Direct UDP Service Diagnostics
 
-Status: blocked — ready after M001 closure
+Status: ready
 
 Repository baseline: `8055730df76f187d94ff83b810d93cb935bb8c37`
 
@@ -31,7 +31,7 @@ Add direct UDP diagnostics with honest local-send/response/unreachable/timeout s
 
 ## Readiness and dependencies
 
-Hard dependency: Native M001 closure. Soft dependency: M002 for richer source/interface evidence. No Eggress interface is required.
+Hard dependency: Native M001 closure (closed). Soft dependency: M002 for richer source/interface evidence (closed). No Eggress interface is required.
 
 Implementation MUST re-inspect current `main` and dependency APIs before editing. The baseline above is planning provenance, not permission to overwrite newer work.
 

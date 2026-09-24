@@ -19,6 +19,8 @@ pub enum DiagnosticErrorKind {
     HostUnreachable,
     /// Authentication or authorization failed.
     Authentication,
+    /// Local operating-system permission denied the operation.
+    PermissionDenied,
     /// TLS negotiation or verification failed.
     Tls,
     /// Protocol exchange failed.
@@ -59,6 +61,14 @@ pub enum DiagnosticStage {
     Deadline,
     /// A stage not yet represented by the contract.
     Other,
+    /// Local interface and route inspection.
+    RouteInspection,
+    /// Native packet send or reply observation.
+    PacketExchange,
+    /// Individual traceroute hop probing.
+    HopProbe,
+    /// Active path-MTU discovery.
+    PathMtuDiscovery,
 }
 
 /// A bounded, redaction-safe diagnostic error.

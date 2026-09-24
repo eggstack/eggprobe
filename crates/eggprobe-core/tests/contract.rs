@@ -266,7 +266,30 @@ fn malformed_targets_fail_during_json_deserialization() {
 fn version_and_duration_values_are_explicit_and_distinct() {
     let report = fixture_report();
     let value: serde_json::Value = serde_json::to_value(report).unwrap();
-    assert_eq!(value["schema_version"], "0.3");
+    assert_eq!(value["schema_version"], "0.4");
     assert_eq!(value["tool"]["version"], "0.1.0");
     assert_eq!(value["probes"][0]["timing"]["total"], 1250);
+}
+
+#[test]
+fn native_probe_bounds_are_validated_before_execution() {
+    let mut plan = fixture_plan();
+    plan.probes = vec![ProbeSpec::IcmpEcho {
+        count: 11,
+        payload_bytes: 56,
+    }];
+    assert_eq!(
+        plan.validate(),
+        Err(eggprobe_core::PlanValidationError::InvalidNativeBounds)
+    );
+
+    plan.probes = vec![ProbeSpec::Udp {
+        port: 0,
+        payload: vec![],
+        receive: false,
+    }];
+    assert_eq!(
+        plan.validate(),
+        Err(eggprobe_core::PlanValidationError::InvalidPort)
+    );
 }

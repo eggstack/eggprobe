@@ -5,7 +5,7 @@ The canonical plan/report contract lives in `eggprobe-core`; the `eggprobe`
 binary (`eggprobe-cli`) is a thin presentation adapter and does not own networking.
 
 - Workspace: `Cargo.toml` — members `crates/eggprobe-core`, `crates/eggprobe-cli`, resolver 3, edition 2021, MSRV 1.89, `unsafe_code = forbid`.
-- Active contract: schema 0.3 (`schemas/plan-0.3.json`, `schemas/report-0.3.json`). `0.1`/`0.2` are retained historical evidence; the binary rejects earlier plan versions.
+- Active contract: schema 0.4 (`schemas/plan-0.4.json`, `schemas/report-0.4.json`). `0.1`/`0.2`/`0.3` are retained historical evidence; the binary rejects earlier plan versions.
 - Founding rule: `plans/adrs/ADR-0001-json-first-core-and-transport-ownership.md` — machine JSON is the contract; human rendering is downstream.
 - Release rule: `plans/adrs/ADR-0002-release-producer-consumer-ownership.md` — qualified archives + checksums + manual install; Eggpack owns producer construction, Eggup owns consumer update. First archive release is not blocked on either integration.
 - Operator entry point: `docs/operator.md`. Planning control surface: `plans/registry.md`.
@@ -15,8 +15,8 @@ binary (`eggprobe-cli`) is a thin presentation adapter and does not own networki
 | # | Module / capability | Owner | Deep dive |
 |---|---|---|---|
 | 1 | Domain contract — `Plan`, `Target`, `ProbeSpec`, `Report`, `Finding`, `Route`, `Timing`, `Version`, `Error` | `eggprobe-core::domain` | [domain-contract.md](domain-contract.md) |
-| 2 | Probe engine / transport — direct DNS/TCP/TLS, Eggfetch HTTP, Eggress routing, deadlines | `eggprobe-core::engine` | [engine-transport.md](engine-transport.md) |
-| 3 | CLI / automation — `dns/tcp/tls/http/proxy/check/run/compare`, batch NDJSON, fail-fast, concurrency | `eggprobe-cli` | [cli-automation.md](cli-automation.md) |
+| 2 | Probe engine / transport — direct DNS/TCP/TLS, Eggfetch HTTP, Eggress routing, native route evidence, deadlines | `eggprobe-core::engine` + `eggprobe-native` | [engine-transport.md](engine-transport.md) |
+| 3 | CLI / automation — `dns/route/tcp/tls/http/proxy/check/run/compare`, batch NDJSON, fail-fast, concurrency | `eggprobe-cli` | [cli-automation.md](cli-automation.md) |
 | 4 | Assertions / findings / exit codes — typed expectations vs observations, `DiagnosticError` taxonomy | `eggprobe-core::assertions` + `domain::{finding,error,report}` | [assertions-findings.md](assertions-findings.md) |
 | 5 | Schema contract / versioning — schemars generation, `SchemaVersion` gating, additive-only evolution | `eggprobe-core::schema` + `schemas/` | [schema-contract.md](schema-contract.md) |
 | 6 | Rendering / privacy — pretty JSON vs NDJSON vs human, `RouteSpec` → `RouteSummary` redaction, resolver scope | `eggprobe-core::render` + `domain::route` | [render-privacy.md](render-privacy.md) |
@@ -29,7 +29,7 @@ binary (`eggprobe-cli`) is a thin presentation adapter and does not own networki
 - **Assertions:** `http_status_range`, `required_http_version`, `required_alpn`, `required_tls_version`, `max_total_micros`; evaluated purely into `Finding{passed,failed,unavailable}`; HTTP 4xx/5xx stay `Ok` probes until an assertion fails them.
 - **Automation:** `run` (plan-file / `Vec<Plan>` / `{plans:[...]}`, stdin `-`, 4 MiB / 256-plan bounds, `JoinSet` concurrency 1–64 default 4, input-order NDJSON with `batch-N` execution IDs, `--fail-fast`), `compare` (direct-vs-routed, `repeat` 1–100, cold policy, nearest-rank `ceil(p*N/100)` percentiles, median delta).
 - **Presentation:** pretty JSON (single), compact NDJSON (batch), short human (fallback); stdout is machine data only under `--json`/`--ndjson`, diagnostics go to stderr; exit codes `0/1/2/3/130`.
-- **Schemas:** `cargo run -p eggprobe-core --example generate-schemas --locked` regenerates `schemas/*-0.3.json` (with pinned `const "0.3"`); `deny_unknown_fields` everywhere; `DurationMicros` integer micros as the sole duration unit.
+- **Schemas:** `cargo run -p eggprobe-core --example generate-schemas --locked` regenerates `schemas/*-0.4.json` (with pinned `const "0.4"`); `deny_unknown_fields` everywhere; `DurationMicros` integer micros as the sole duration unit.
 - **Verification:** `cargo fmt --check`, `cargo check`, `cargo clippy -- -D warnings`, `cargo test`, `cargo +1.89.0 check`, `cargo tree`, `cargo audit`; CI quality matrix (ubuntu/macos/windows) + MSRV + audit jobs; release packaging matrix (linux x86_64/aarch64, macos x86_64/arm64, windows x86_64).
 
 ## How everything fits together
@@ -49,7 +49,7 @@ CLI plan builders            +-- render (JSON/human)
  proxy/check/run/compare)
 ```
 
-1. CLI parses args (`eggprobe-cli`) and builds a `ProbePlan` with `schema_version: CURRENT (0.3)`.
+1. CLI parses args (`eggprobe-cli`) and builds a `ProbePlan` with `schema_version: CURRENT (0.4)`.
 2. `ProbePlan::validate()` gates version, deadline, ports, HTTP authority match, assertion ranges.
 3. `ProbeEngine::execute` runs probes sequentially under a finite outer deadline, mapping failures to `DiagnosticError{kind,stage}` and successes to typed `ProbeEvidence`.
 4. `evaluate_assertions` maps `AssertionSpec`s to report-level `Finding`s without mutating probe evidence.

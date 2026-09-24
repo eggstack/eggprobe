@@ -38,8 +38,8 @@ awaiting work already started. Input is bounded to 4 MiB and batches to 256
 plans. Logs and diagnostics go to stderr; stdout is machine data only when
 `--json` or `--ndjson` is selected.
 
-The checked-in `schemas/*-0.3.json` files describe the active contract. The
-`*-0.1.json` and `*-0.2.json` files are retained historical evidence; the
+The checked-in `schemas/*-0.4.json` files describe the active contract. The
+`*-0.1.json`, `*-0.2.json`, and `*-0.3.json` files are retained historical evidence; the
 binary rejects earlier plan versions rather than silently reinterpreting them.
 Rust types remain authoritative, and additive evolution is permitted only when
 optional and redaction-safe.
@@ -52,6 +52,16 @@ route marker `{"kind":"eggress"}`; debug and human output use
 `eggress(<redacted>)`.
 Eggress owns route parsing and hop protocol semantics. Eggprobe does not use
 environment proxy variables or silently fall back to a direct connection.
+
+## Local route evidence
+
+`eggprobe route <target> --json` reports the target address, the local source
+address selected by the kernel for a no-payload UDP socket, its correlated
+interface addresses/state/MTU when available, and at most 32 most-specific
+route-table candidates. A candidate is correlation evidence, not proof of the
+kernel's selected route; policy routing may make the table view incomplete.
+Interface MTU describes the local link and is not path MTU. Native probes are
+direct-only, so a route plan using `--via` reports `unsupported`.
 
 ## Troubleshooting
 

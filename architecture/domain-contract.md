@@ -73,7 +73,7 @@ pub struct ProbePlan {
 
 ### 2.8 `domain/version.rs` — Schema and tool versions
 
-`SchemaVersion{major, minor}` (`version.rs:11-16`): JSON `"major.minor"`, schema pattern `^[0-9]+\.[0-9]+$`, `INITIAL = 0.1`, `CURRENT = 0.3`. `ToolVersion(String)` transparent, rejects empty (`version.rs:85-126`). `VersionParseError{InvalidFormat, InvalidNumber, EmptyToolVersion}`.
+`SchemaVersion{major, minor}` (`version.rs:11-16`): JSON `"major.minor"`, schema pattern `^[0-9]+\.[0-9]+$`, `INITIAL = 0.1`, `CURRENT = 0.4`. `ToolVersion(String)` transparent, rejects empty (`version.rs:85-126`). `VersionParseError{InvalidFormat, InvalidNumber, EmptyToolVersion}`.
 
 ### 2.9 `domain/error.rs` — Structured diagnostics
 
@@ -83,7 +83,7 @@ pub struct ProbePlan {
 
 ```text
 ProbePlan (plan.rs:15)
-├─ schema_version — must equal CURRENT (0.3)
+├─ schema_version — must equal CURRENT (0.4)
 ├─ target: TargetSpec ──► TargetSummary via From<&TargetSpec>
 ├─ route: RouteSpec ──► RouteSummary via summary() — redaction boundary
 ├─ probes: Vec<ProbeSpec> — Dns|Tcp|Tls|Http, ordered
@@ -106,7 +106,7 @@ Findings never substitute `ProbeStatus`/`DiagnosticError`. `DiagnosticStage` lin
 
 1. Core owns contract + engine; `domain/` has no network (`lib.rs:1-4`).
 2. Strict JSON: `deny_unknown_fields` on all input/output structs.
-3. Version gating: any `schema_version != CURRENT (0.3)` rejected.
+3. Version gating: any `schema_version != CURRENT (0.4)` rejected.
 4. Redaction: `RouteSpec` may hold credentials; `ProbeReport` holds only `RouteSummary`; `Debug`/`Display` emit `<redacted>`; `DiagnosticError.message` credential-stripped.
 5. Target authority: HTTP URLs must match `TargetSpec.host` and (when set) port; scheme limited to `http|https`, no userinfo.
 6. Syntactic-only target validation; private-IP policy lives in `engine::TargetPolicy`, not domain.

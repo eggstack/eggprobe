@@ -43,6 +43,19 @@ fn check_without_url_does_not_create_http_finding() {
 }
 
 #[test]
+fn route_command_emits_target_scoped_machine_evidence() {
+    let output = binary()
+        .args(["route", "127.0.0.1", "--json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["schema_version"], "0.4");
+    assert_eq!(value["probes"][0]["kind"], "route");
+    assert_eq!(value["probes"][0]["evidence"]["kind"], "route");
+}
+
+#[test]
 fn invalid_check_range_is_usage_error() {
     let output = binary()
         .args([
@@ -146,7 +159,7 @@ async fn compare_keeps_side_specific_statistics_and_negative_exit() {
 
 fn empty_plan(route: &str) -> serde_json::Value {
     serde_json::json!({
-        "schema_version": "0.3",
+        "schema_version": "0.4",
         "target": {"host": "example.com"},
         "route": if route == "direct" {
             serde_json::json!({"kind": "direct"})

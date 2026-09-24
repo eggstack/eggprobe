@@ -9,6 +9,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [dependencies]
+eggprobe-native = { path = "../eggprobe-native" }
 eggfetch-core = { version = "0.2.0", default-features = false, features = ["advanced-routing", "standard-http1", "standard-http2", "tls-rustls"] }
 eggress-core = "1.0.8"
 eggress-embed = { version = "1.0.8", default-features = false, features = ["pproxy-compat"] }

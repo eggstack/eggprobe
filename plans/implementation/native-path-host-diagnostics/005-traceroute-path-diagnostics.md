@@ -1,6 +1,6 @@
 # Native M005 — Traceroute and Path Diagnostics
 
-Status: blocked — ready after M001 closure and backend qualification
+Status: blocked — tracer backend qualification
 
 Repository baseline: `8055730df76f187d94ff83b810d93cb935bb8c37`
 
@@ -37,7 +37,7 @@ Implementation MUST re-inspect current `main` and dependency APIs before editing
 
 ## Current implementation evidence
 
-Research identified `tracert` 0.12.x as a focused Rust library supporting async IPv4/IPv6 ICMP and UDP traceroute. Its implementation uses socket-level facilities, commonly requires Linux raw-socket capability, may be affected by Windows firewall handling of TTL Exceeded/Port Unreachable, and depends on its own `netdev` line. `trippy-core` is richer but materially broader and is not the default choice.
+`tracert` 0.12.0 exposes structured node results, but omits silent hop attempts from results, deduplicates responders, reverse-resolves destination nodes unconditionally, and depends on `netdev` 0.41.x alongside Eggprobe's accepted 0.46.3 line. It does not qualify. The plan remains blocked pending a backend that preserves bounded per-attempt evidence and obeys the no-reverse-DNS default.
 
 ## Invariants
 

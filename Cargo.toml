@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/eggprobe-native",
     "crates/eggprobe-core",
     "crates/eggprobe-cli",
 ]

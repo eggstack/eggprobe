@@ -9,11 +9,11 @@ artifacts with:
 cargo run -p eggprobe-core --example generate-schemas --locked
 ```
 
-`plan-0.1.json` / `report-0.1.json` and `plan-0.2.json` / `report-0.2.json`
-are immutable historical evidence. `plan-0.3.json` and `report-0.3.json` are
-the active contract. The binary rejects earlier plans rather than silently
-reinterpreting them. Version 0.3 adds DNS resolver scope and routed failure hop
-and protocol provenance.
+`plan-0.1.json` / `report-0.1.json`, `plan-0.2.json` / `report-0.2.json`, and
+`plan-0.3.json` / `report-0.3.json` are immutable historical evidence.
+`plan-0.4.json` and `report-0.4.json` are the active contract. The binary
+rejects earlier plans rather than silently reinterpreting them. Version 0.4
+adds native diagnostic vocabulary and evidence types.
 
 The pre-1 policy permits additive optional fields and new enum variants only
 when consumers reject unknown required structure safely. Breaking changes or
