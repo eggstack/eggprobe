@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: M001 historical closure retained; M002 corrective active; M003 blocked
+Status: active; M001 closed, M002 operational evidence pending, C002 ready; historical M003 superseded
 
 Long-term references:
 
@@ -10,38 +10,58 @@ Long-term references:
 Related ADRs:
 
 - `plans/adrs/ADR-0001-json-first-core-and-transport-ownership.md`
+- `plans/adrs/ADR-0002-release-producer-consumer-ownership.md`
 
 ## 1. Purpose and ownership boundary
 
-This subsystem owns release artifacts, supported-target evidence, installation/update integration, release smoke tests, dependency/security qualification, and operator-facing release documentation.
+This subsystem owns Eggprobe-specific release policy, supported-target claims,
+release qualification, operator documentation, and the adapters/configuration
+by which Eggprobe may consume shared Eggstack release infrastructure.
 
-It does not own diagnostic semantics.
+It does not own:
+
+- shared producer release construction, manifests, bootstrap generation, or
+  generated release CI — those belong to Eggpack;
+- generic verified local deployment, replacement, rollback, or recovery —
+  those belong to Eggup;
+- diagnostic semantics — those belong to the foundation/transport/CLI
+  subsystems.
+
+Eggprobe may retain a small standalone release workflow until the corresponding
+Eggpack producer interfaces are mature enough to replace it safely.
 
 ## 2. Work classification
 
 ### Invariants
 
 - release binaries correspond to tested source;
-- checksums/provenance are published;
+- checksums/provenance are published for advertised artifacts;
 - MSRV claims are tested;
 - unsupported targets are not advertised as supported;
-- release smoke tests validate JSON as well as human CLI behavior;
-- installer/updater logic should reuse shared Eggstack machinery when a stable interface exists.
+- release smoke tests validate machine output as well as human CLI behavior;
+- first-release qualification is not blocked on optional Eggpack/Eggup
+  integrations;
+- producer mapping/build/bootstrap/CI logic is not reimplemented locally once
+  Eggpack is adopted;
+- generic verified mutation/rollback logic is not copied from Eggup.
 
 ### Capabilities
 
 - downloadable standalone binary;
-- installer;
+- documented manual/archive installation;
 - version command;
 - shell completions;
-- upgrade path.
+- optional future bootstrap installer through Eggpack;
+- optional future in-place self-update through Eggup.
 
 ### Infrastructure
 
-- CI target matrix;
-- release packaging scripts/workflows;
+- current standalone CI target matrix;
+- current release packaging workflow;
 - checksum/provenance generation;
-- smoke fixtures.
+- smoke fixtures;
+- future Eggpack producer adapter/configuration;
+- future Eggup consumer adapter integration.
 
 ### Polish
 
@@ -54,44 +74,132 @@ It does not own diagnostic semantics.
 - no auto-update daemon;
 - no telemetry requirement;
 - no package-manager matrix before direct release artifacts are stable;
-- no copied updater implementation if `eggup` provides the required shared interface.
+- no local producer framework duplicating Eggpack;
+- no local updater transaction engine duplicating Eggup;
+- no requirement that optional self-update exist before the first archive release.
 
 ## 4. Current state
 
-No production code or release artifact existed at planning bootstrap.
+The diagnostic product correctives are closed through the current schema and
+transport/CLI qualification.
 
-The intended target class follows current Eggstack practice:
+Release state:
 
-- Linux x86_64/aarch64 including SBCs;
-- macOS x86_64/arm64;
-- Windows x86_64;
-- Rust 1.89 source-build floor unless dependencies force an explicit reviewed change.
+- M001 CI/MSRV/audit/release skeleton is historically closed;
+- M002 packaging implementation exists;
+- Release corrective C001 repaired cross-architecture smoke, checksum, and
+  tag/source/version authority defects;
+- C001 is conditionally closed because the repository has no existing release
+  tag, so a successful hosted packaging run/artifact evidence does not yet
+  exist;
+- C002 release-boundary/documentation cleanup is ready.
 
-The sibling `eggup` project is being designed as shared verified installer/updater/service-management machinery. Eggprobe SHOULD consume it when its public interface is available rather than duplicating release-update logic.
+Current shared-infrastructure state reviewed during the ownership correction:
+
+### Eggpack
+
+- Contract M002 is closed;
+- ReleaseManifest M001 and corrective M001a are closed;
+- Manifest M002 final-artifact builder is ready but not closed;
+- Build/Qualification M001 is ready but later builder/qualification/finalizer
+  milestones are not closed;
+- Bootstrap Installers M001 is ready but not closed;
+- CI/release orchestration is still downstream of the build-plan interface;
+- Eggpack-side Eggup interoperability M001 is ready but not closed.
+
+### Eggup
+
+- producer-side distribution authority has been retired/transferred to Eggpack;
+- `eggup-dist` is removed;
+- consumer update transaction/acquisition/rollback layers are qualified;
+- future Eggpack-manifest consumption remains optional and gated on a stable
+  interoperability adapter.
+
+Therefore the first Eggprobe release is blocked by its own hosted artifact
+evidence, not by Eggup and not by Eggpack adoption.
 
 ## 5. Target architecture
 
-Release packaging should produce version-aligned archives containing the `eggprobe` binary, checksums, license/readme material as appropriate, and deterministic smoke metadata.
+```text
+                         first-release path
+source/tag
+   |
+   v
+Eggprobe standalone packaging workflow
+   |
+   v
+qualified archives + checksums
+   |
+   v
+M004 release qualification/docs
+   |
+   v
+manual/archive installation
+```
 
-Installer/updater ownership should be injected/shared rather than baked into the diagnostics core.
+Future shared producer path:
+
+```text
+Eggprobe product release policy/config
+                 |
+                 v
+              Eggpack
+ contract -> build/qualify -> finalize -> manifest
+                 |
+                 +--> bootstrap installer / generated CI when adopted
+```
+
+Optional future runtime self-update path:
+
+```text
+Eggprobe release-selection policy
+            |
+            v
+Eggpack ReleaseManifest evidence
+            |
+            v
+Eggup consumer adapter/transaction
+            |
+            v
+verified local install / rollback / receipt
+```
+
+The future paths are additive maintenance/capability work. They are not required
+to qualify an ordinary standalone archive release.
 
 ## 6. Dependency graph
 
 ```text
-foundation + executable CLI
-          |
-          v
-M001 CI/MSRV/security/release skeleton
-          |
-          v
-M002 cross-platform binary packaging
-          |
-          +--> M003 installer/update integration
-          |
-          `--> M004 release qualification + docs
+M001 CI/MSRV/release skeleton [CLOSED]
+              |
+              v
+M002 standalone packaging [IMPLEMENTED; OPERATIONAL EVIDENCE PENDING]
+              |
+              +--> C001 hosted packaging evidence [CONDITIONALLY CLOSED]
+              |
+              +--> C002 release-boundary/docs cleanup [READY]
+              |
+              v
+M004 release qualification/operator docs
+              |
+              v
+first standalone release
+
+Optional/deferred:
+
+Eggpack stable producer interfaces
+              |
+              v
+M003a Eggpack producer release integration
+
+Eggpack manifest/interoperability + Eggup consumer adapter
+              |
+              v
+M003b optional Eggup runtime self-update
 ```
 
-M003 has an interface dependency on shared Eggstack updater machinery; it may remain deferred without blocking manual binary releases.
+M003a and M003b are independent of first-release qualification unless the
+release explicitly advertises those capabilities.
 
 ## 7. Milestones
 
@@ -106,6 +214,8 @@ Exit conditions:
 - primary platform compile/test matrix;
 - release workflow skeleton does not publish unverified artifacts.
 
+Status: closed.
+
 ### M002 — Cross-platform binary packaging
 
 Class: capability + infrastructure.
@@ -115,36 +225,83 @@ Exit conditions:
 - target archives and checksums;
 - local/release smoke test;
 - `eggprobe --version`;
-- JSON smoke output parseable;
-- Linux aarch64/SBC target evidence.
+- machine-output smoke parseable;
+- Linux aarch64/SBC claims distinguish build qualification from native runtime
+  qualification.
 
-### M003 — Shared installer/update integration
+Status: implementation/corrective code exists; operationally pending C001 hosted
+evidence against a valid tag.
 
-Class: capability.
+### Historical M003 — Shared installer/update integration
+
+Status: superseded.
+
+The historical plan mixed producer and consumer responsibilities and is
+retained only as planning history:
+
+- `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md`
+- `plans/closure/release-operational-qualification/003-status.md`
+
+ADR-0002 replaces it with M003a and M003b.
+
+### M003a — Eggpack producer release integration
+
+Class: infrastructure + maintenance.
 
 Objective:
 
-Consume `eggup` or equivalent shared Eggstack interface once stable.
+Adopt stable Eggpack producer contracts/build/finalization/manifest/bootstrap/CI
+surfaces where they reduce duplicated Eggprobe release machinery.
 
-Exit conditions:
+Implementation plan:
 
-- verified download/checksum path;
-- pinned version/custom install dir;
-- no duplicated updater core;
-- safe failure/rollback semantics documented.
+- `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md`
+
+Status: blocked/deferred on closure-backed Eggpack interfaces required by the
+chosen adoption slice.
+
+This milestone is not required for the first standalone release.
+
+### M003b — Optional Eggup runtime self-update integration
+
+Class: optional capability.
+
+Objective:
+
+If Eggprobe elects to provide in-place self-update, use Eggup consumer
+deployment/rollback machinery with Eggpack release evidence rather than local
+updater logic.
+
+Implementation plan:
+
+- `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md`
+
+Status: blocked/deferred on stable Eggpack manifest/interoperability plus an
+Eggup-side consumer adapter/API and a product decision to expose self-update.
+
+This milestone is not required for the first standalone release.
 
 ### M004 — Release qualification and operator documentation
 
 Class: polish + invariant.
 
+Objective:
+
+Qualify one concrete standalone release candidate and reconcile artifacts,
+schemas, security evidence, target claims, and operator documentation.
+
 Exit conditions:
 
-- installation docs;
+- installation/archive instructions;
 - supported target table;
 - release verification record;
 - schema fixture compatibility against release binary;
 - dependency/security evidence;
-- no unresolved medium-or-higher release blocker.
+- no unresolved medium-or-higher release blocker;
+- update instructions only if optional M003b is actually closed/advertised.
+
+Status: blocked only on M002/C001 operational artifact evidence and corrective
+C002 for the first standalone release.
 
 ## 8. Cross-cutting requirements
 
@@ -154,63 +311,74 @@ Release version and schema version are separate.
 
 ### Security
 
-No unsigned/unverified download path should be presented as the default installer behavior. Security audit exceptions require documented rationale and expiry/review.
+No unsigned/unverified download path should be presented as the default
+installer behavior. Security audit exceptions require documented rationale and
+expiry/review.
+
+Eggpack manifests provide producer evidence; they do not authorize a release
+selection. Eggup mutation must verify the selected candidate before commit.
 
 ### Performance
 
-Binary-size/throughput claims require measurement. Small release profiles may be evaluated but must not compromise diagnostics or unwind safety.
+Binary-size/throughput claims require measurement. Small release profiles may
+be evaluated but must not compromise diagnostics or unwind safety.
 
 ### Operations
 
-A source build remains available even when no prebuilt target exists.
+A source build remains available even when no prebuilt target exists. Manual
+archive installation remains a supported truthful path until optional shared
+integration replaces it.
 
 ## 9. Verification strategy
 
-- fresh-install smoke;
+First-release qualification:
+
+- hosted artifact build against an existing release tag;
 - release archive extraction;
 - `--version`;
-- JSON parse smoke;
-- one local no-network/core command and later loopback probe;
+- machine-output parse smoke;
+- representative local loopback diagnostics;
 - checksum verification;
 - MSRV compile;
 - target-native tests where runners exist;
 - artifact inspection.
 
+Future Eggpack adoption additionally requires parity against the standalone
+release behavior before deleting local release mapping/workflow code.
+
+Future Eggup self-update requires deterministic local update/rollback fixtures;
+public release endpoints are not correctness dependencies.
+
 ## 10. Risks and decision points
 
 - Windows networking semantics may require platform-specific qualification.
-- Linux aarch64 cross-builds are not equivalent to target-class runtime evidence; at least one SBC/native smoke should be recorded before claiming operational support.
-- Eggup interface timing may lag Eggprobe release readiness; do not block standalone artifacts unnecessarily.
+- Linux aarch64 cross-builds are not equivalent to target-class runtime
+  evidence; native SBC evidence is required before claiming native runtime
+  qualification.
+- Eggpack adoption too early could bind Eggprobe to unfinished producer APIs.
+- Eggup self-update should not be implemented merely because the transaction
+  layer exists; product UX/policy must justify it.
+- temporary standalone release machinery should not grow into a second
+  Eggpack.
 
 ## 11. Completion definition
 
-The subsystem closes when users can obtain, verify, install, run, and update a supported binary through documented paths and release artifacts have machine-contract smoke evidence.
+For the first release, this subsystem may close when users can obtain, verify,
+install manually, and run a supported binary and the release artifacts have
+machine-contract smoke evidence.
+
+Eggpack producer integration and Eggup runtime self-update are subsequent,
+optional/deferred milestones and do not prevent that closure.
 
 ## 12. Milestone status
 
-| Milestone | Status | Implementation plan | Closure record | Blockers |
+| Milestone | Status | Implementation plan | Closure/evidence | Blockers |
 |---|---|---|---|---|
-| M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | external workflow run evidence remains operational |
-| M002 cross-platform binary packaging | corrective required | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure: `plans/closure/release-operational-qualification/002-status.md` | packaging workflow defects; see corrective C001 |
-| M003 shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | `plans/closure/release-operational-qualification/003-status.md` | no published eggup interface |
-| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | Release corrective C001 hosted tag evidence and Release M002 operational qualification; M003 only if updater advertised |
-
-
-## 13. Post-closure corrective status
-
-Static audit of the unexecuted M002 packaging workflow found cross-architecture,
-checksum, and version/ref authority defects. The historical conditional closure
-record remains evidence of the first implementation, but M002 is not currently
-release-qualified.
-
-Current corrective authority:
-
-- `plans/subsystems/release-operational-qualification-corrective-addendum.md`
-- C001: `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md`
-- status: ready for handoff
-
-Release M004 remains blocked until hosted tag evidence for release corrective
-C001 is recorded and Release M002 operational qualification is complete. The
-product correctness correctives are closed, including Transport C002 against
-Eggress 1.0.8. M003 remains independently blocked on the published shared
-`eggup` interface.
+| M001 CI/MSRV/audit/release skeleton | closed | `plans/implementation/release-operational-qualification/001-ci-msrv-audit-release-skeleton.md` | `plans/closure/release-operational-qualification/001-status.md` | — |
+| M002 cross-platform binary packaging | operational evidence pending | `plans/implementation/release-operational-qualification/002-cross-platform-binary-packaging.md` | historical conditional closure + corrective C001 | existing valid release tag and hosted run evidence |
+| C001 packaging workflow correction/hosted evidence | conditionally closed | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | `plans/closure/release-operational-qualification-corrective/001-status.md` | valid release tag + hosted artifact evidence |
+| C002 release boundary/documentation cleanup | ready | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | pending | — |
+| historical M003 mixed installer/update | superseded | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | historical blocked disposition retained | superseded by ADR-0002 |
+| M003a Eggpack producer integration | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | pending | selected Eggpack producer interfaces not yet closure-backed |
+| M003b Eggup runtime self-update | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | pending | Eggpack manifest/interoperability + Eggup consumer adapter + product decision |
+| M004 release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | pending | M002/C001 hosted evidence + C002 |
