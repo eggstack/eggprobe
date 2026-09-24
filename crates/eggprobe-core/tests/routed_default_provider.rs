@@ -1,5 +1,5 @@
 //! C006 regression: a routed probe must succeed in a process that never
-//! installed the rustls default CryptoProvider.
+//! installed the rustls default `CryptoProvider`.
 //!
 //! This file is intentionally a separate integration target that never calls
 //! `install_default`: each `tests/` target runs in its own process, while the
