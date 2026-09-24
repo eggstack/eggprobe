@@ -1,6 +1,6 @@
 # Release and Operational Qualification — Post-Closure Corrective Addendum
 
-Status: active; C001 operational evidence satisfied by C005; C002 closed; C003 closed historically; C004 closed; C005 closed; M002 operationally qualified; M004 ready
+Status: active; C001 operational evidence satisfied by C005; C002 closed; C003 closed historically; C004 closed; C005 closed; M002 operationally qualified; C006 ready; M004 blocked on C006
 
 Historical planning baseline: `24965aa0ba2696b201e9c74531920877529821d5`
 
@@ -164,7 +164,12 @@ and does not adopt Eggpack or Eggup.
   checksums, host-native smoke on all host-native targets (Linux aarch64
   build-qualified only). C001's remaining valid-tag hosted packaging evidence
   is supplied and M002 is operationally qualified.
-- Release M004 is ready for handoff (was blocked only on C005 closure).
+- Release M004 execution at `25dc692` stopped per its stop conditions: the
+  shipped `v0.1.0` binary deterministically panics (exit 3) on any
+  Eggress-routed probe (missing process-default rustls CryptoProvider on the
+  production path; test setups mask it by installing the provider globally).
+  M004 is blocked on C006; version/tag disposition for the fixed tree belongs
+  to M004 resumption.
 - Eggpack/Eggup instability does not block this sequence and must not be worked
   around by copying their producer/consumer responsibilities into Eggprobe.
 
@@ -208,6 +213,32 @@ Successful C005 closure has:
 - supplied C001's remaining hosted evidence (C001 operationally satisfied;
   historical conditional-closure record retained);
 - promoted Release M002 to operationally qualified;
-- made M004 ready for handoff;
 - published no GitHub Release;
 - adopted neither Eggpack nor Eggup.
+
+(M004 readiness was transient: its execution exposed the C006 defect below
+and it is now blocked on C006.)
+
+## 8. C006 — Routed-path CryptoProvider installation
+
+M004 execution at `25dc692` proved the shipped `v0.1.0` binary panics
+(exit 3) on every Eggress-routed probe: `eggress_transport_tls` builds a
+default rustls client config with no explicit provider, and no production
+path installs the process-default provider — only test setups do, which
+masked the defect process-globally. Direct probes, schema, audit, and MSRV
+evidence from the stopped M004 execution are retained for resumption.
+
+Implementation:
+
+- `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md`
+
+Closure target:
+
+- `plans/closure/release-operational-qualification-corrective/006-status.md`
+
+Status: ready for handoff.
+
+C006 owns the production fix (idempotent ring-default installation on the
+routed path), a process-isolated regression, full re-qualification, and
+handoff back to M004. It must not move the `v0.1.0` tag; M004 resumption
+owns the version/tag disposition for the fixed tree.

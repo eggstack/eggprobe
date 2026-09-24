@@ -1,6 +1,6 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: ready — C005 closed (`plans/closure/release-operational-qualification-corrective/005-status.md`: tag `v0.1.0` at `2760b8b`, hosted packaging run `36030784594` fully green); C001 operational evidence satisfied, M002 operationally qualified
+Status: blocked — M004 execution at `25dc692` stopped on a routed-path product defect (shipped binary panics without a process-default rustls CryptoProvider; see C006 plan). Partial verification evidence (direct probes, schema, audit) retained for resumption.
 
 Planning baseline: historical `e55a21fe73915b7a38c2fa674807354539806c60`; refresh at execution against current release artifacts.
 
