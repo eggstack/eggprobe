@@ -1,6 +1,6 @@
 # Release and Operational Qualification Roadmap
 
-Status: active; M001 closed, M002 operationally qualified, C001 operational evidence satisfied by C005, C002/C003 closed historically, C004/C005/C006 closed, M004 ready (resumption owns version/tag disposition for the fixed tree); historical M003 superseded
+Status: active; M001 closed, M002 operationally qualified, C001 operational evidence satisfied by C005, C002/C003 closed historically, C004/C005/C006 closed, M004 closed (first standalone release qualified as 0.1.1); historical M003 superseded
 
 Long-term references:
 
@@ -147,10 +147,11 @@ Current shared-infrastructure state reviewed during the ownership correction:
 - future Eggpack-manifest consumption remains optional and gated on a stable
   interoperability adapter.
 
-Therefore the first Eggprobe release is next gated by resumed M004 final
-qualification, which owns the version/tag disposition for the C006-fixed
-tree (the qualified `v0.1.0` artifacts predate the production fix). It is
-not blocked by Eggup or Eggpack adoption.
+Therefore the first Eggprobe standalone archive release is qualified as
+`0.1.1` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748`;
+see `plans/closure/release-operational-qualification/004-status.md`). It
+is not blocked by Eggup or Eggpack adoption. Publication/distribution
+remains a separate decision (no GitHub Release exists).
 
 ## 5. Target architecture
 
@@ -223,8 +224,11 @@ M002 standalone packaging [OPERATIONALLY QUALIFIED via C005]
                     promoted M002 operationally qualified
                                |
                                v
-M004 release qualification/operator docs [READY — resumption owns
-version/tag disposition for the C006-fixed tree]
+M004 release qualification/operator docs [CLOSED — first standalone
+release qualified as 0.1.1]
+               |
+               v
+first standalone release (qualified; publication separate)
               |
               v
 first standalone release
@@ -346,11 +350,16 @@ Exit conditions:
 - no unresolved medium-or-higher release blocker;
 - update instructions only if optional M003b is actually closed/advertised.
 
-Status: ready for handoff. C006 has closed with the routed-path
-CryptoProvider fix (hosted run `36038995837` green); resumption owns the
-version/tag disposition for the fixed tree. C005 has closed with C001 hosted
-artifact evidence and the M002 operational promotion; C004, C002, and the
-original C003 findings are closed.
+Status: closed. Closure evidence:
+
+- `plans/closure/release-operational-qualification/004-status.md`
+
+M004 qualified the first standalone archive release as `0.1.1`
+(tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748` fully
+green, full shipped-binary battery green). C005 has closed with C001 hosted
+artifact evidence and the M002 operational promotion; C006 has closed with
+the routed-path CryptoProvider fix; C004, C002, and the original C003
+findings are closed.
 
 ## 8. Cross-cutting requirements
 
@@ -442,5 +451,5 @@ optional/deferred milestones and do not prevent that closure.
 | historical M003 mixed installer/update | superseded | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | historical blocked disposition retained | superseded by ADR-0002 |
 | M003a Eggpack producer integration | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | pending | selected Eggpack producer interfaces not yet closure-backed |
 | M003b Eggup runtime self-update | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | pending | Eggpack manifest/interoperability + Eggup consumer adapter + product decision |
-| M004 release qualification/operator docs | ready | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | partial verification at `25dc692` + C006 evidence (`plans/closure/release-operational-qualification-corrective/006-status.md`) | resumption owns version/tag disposition for the fixed tree |
+| M004 release qualification/operator docs | closed | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | `plans/closure/release-operational-qualification/004-status.md` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748` fully green) | — |
 | C006 routed-path CryptoProvider installation | closed | `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md` | `plans/closure/release-operational-qualification-corrective/006-status.md` (fix at `fa8ad7c`, hosted run `36038995837` fully green) | — |

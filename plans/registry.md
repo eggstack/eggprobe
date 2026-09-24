@@ -92,7 +92,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Foundation diagnostic contract | closed corrective | C002 closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
 | Transport/probe engine | closed corrective | C001/C002 closed; Eggress 1.0.8 qualified | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
 | CLI/automation | closed corrective | C001 closed | `plans/subsystems/cli-automation-corrective-addendum.md` |
-| Release/packaging | active | C006 closed; M004 ready; M002 operationally qualified; C001–C005 closed | `plans/subsystems/release-operational-qualification-roadmap.md` |
+| Release/packaging | active | M004 closed (first standalone release qualified as 0.1.1); C001–C006 closed; M002 operationally qualified | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
 | Native path + QUIC/H3 expansion | roadmap-level | no implementation handoff | Phase 8/9 prerequisites unresolved |
@@ -104,13 +104,14 @@ post-closure findings have been handled by the registered corrective sequence.
 | Release corrective | C005 first-release tag and hosted packaging qualification | closed | `plans/implementation/release-operational-qualification-corrective/005-first-release-tag-and-hosted-packaging-qualification.md` | Tag `v0.1.0` at `2760b8b`; hosted packaging run `36030784594` fully green; closure `plans/closure/release-operational-qualification-corrective/005-status.md` |
 | Release corrective | C006 routed-path CryptoProvider installation | closed | `plans/implementation/release-operational-qualification-corrective/006-routed-path-cryptoprovider-installation.md` | Fix at `fa8ad7c`; hosted run `36038995837` green; closure `plans/closure/release-operational-qualification-corrective/006-status.md` |
 
-## Operational evidence gate (M004 stopped)
+## Operational evidence gate (M004 closed)
 
-M004 execution at `25dc692` stopped per its stop conditions on the routed
-panic; C006 has now closed with the root-cause fix and handoff. M004 is
-ready; its resumption owns the version/tag disposition for the fixed tree
-(the qualified `v0.1.0` artifacts predate the production fix). Neither C006
-nor M004 depends on Eggup or Eggpack adoption.
+M004 has closed with the first standalone archive release qualified as
+`0.1.1` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748`;
+closure `plans/closure/release-operational-qualification/004-status.md`).
+The earlier stopped M004 execution at `25dc692` is retained as history in
+the C006 plan and the M004 closure. Neither M004 nor its C005/C006
+correctives depends on Eggup or Eggpack adoption.
 
 ## Operational evidence gate
 
@@ -139,7 +140,7 @@ adoption.
 |---|---|---|---|---|
 | Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | Current Eggpack HEAD `154d4a2` still has Manifest M002, Build/Qualification M001, and Bootstrap M001 ready but not closed; selected interfaces must be closure-backed |
 | Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | Current Eggpack HEAD `154d4a2` has interop M001 ready but not closed; Eggup HEAD `8937ad0` still gates adapter implementation on that closure; product decision also required |
-| Release qualification | M004 | ready | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | C006 closed (routed panic fixed); resumption owns version/tag disposition for the fixed tree |
+| Release qualification | M004 | closed | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | First standalone release qualified as `0.1.1` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748`); closure `plans/closure/release-operational-qualification/004-status.md` |
 
 ## Superseded planning
 
@@ -181,12 +182,17 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
    run `36030784594`): first-release workflow hygiene landed, one immutable
    first-release tag qualified, every artifact/checksum/identity record
    inspected, C001 evidence satisfied, M002 operationally qualified.
+1. ~~Select the release candidate~~ — done as patch `0.1.1` (fix-forward;
+   `v0.1.0` immutable and predates the C006 production fix).
 2. ~~Execute **Release corrective C006**~~ — done (`fa8ad7c`, hosted run
-   `36038995837`): process-default provider installed on the production
-   routed path, process-isolated regression added, M004 handed back ready.
-3. Resume **Release M004** and qualify the first standalone archive release
-   (resumption owns the version/tag disposition for the fixed tree).
-3. Do not wait for M003a or M003b to complete the first release and do not
+   `36038995837`).
+3. ~~Resume **Release M004** and qualify the first standalone archive
+   release~~ — done: tag `v0.1.1` at `53ea53d`, hosted packaging run
+   `36041400748` fully green, shipped-binary battery green, closure
+   `plans/closure/release-operational-qualification/004-status.md`.
+   Publication/distribution remains a separate decision (no GitHub
+   Release exists).
+4. Do not wait for M003a or M003b to complete the first release and do not
    create temporary Eggpack/Eggup substitutes inside Eggprobe.
 4. M003a remains blocked until the specific Eggpack interfaces selected for
    adoption are closure-backed.

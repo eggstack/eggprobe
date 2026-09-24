@@ -1,6 +1,6 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: ready — C006 closed (`plans/closure/release-operational-qualification-corrective/006-status.md`: routed panic fixed, hosted run `36038995837` fully green). Resumption owns the version/tag disposition for the fixed tree (`v0.1.0` artifacts predate the fix).
+Status: closed at `v0.1.1` — see `plans/closure/release-operational-qualification/004-status.md` (hosted packaging run `36041400748` fully green; first standalone archive release qualified as `0.1.1`)
 
 Planning baseline: historical `e55a21fe73915b7a38c2fa674807354539806c60`; refresh at execution against current release artifacts.
 
