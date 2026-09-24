@@ -1,15 +1,20 @@
 # Release and Operational Qualification M004 — Release Qualification and Operator Documentation
 
-Status: ready — not executed because sequential run stopped at Release M003 blocker
+Status: blocked — awaiting release artifact evidence and corrective C002
 
-Planning baseline: `e55a21fe73915b7a38c2fa674807354539806c60`; refresh after release artifacts exist.
+Planning baseline: historical `e55a21fe73915b7a38c2fa674807354539806c60`; refresh at execution against current release artifacts.
 
 Source roadmap:
 
 - `plans/subsystems/release-operational-qualification-roadmap.md#m004--release-qualification-and-operator-documentation`
 
 Hard dependency: Release M002 closed.
-Conditional dependency: M003 only if installer/update is advertised in the release being qualified.
+Conditional dependency: M003b only if runtime self-update is advertised in the
+release being qualified. M003a Eggpack producer adoption is not required for
+the first standalone archive release.
+
+Additional planning dependency: Release corrective C002 must close so operator
+documentation uses the current Eggpack/Eggup ownership model.
 
 Primary class: invariant + polish
 
@@ -43,7 +48,7 @@ Provide:
 - timeout/cancellation behavior;
 - privacy/security notes;
 - troubleshooting/error taxonomy;
-- update instructions only if M003 is closed.
+- update instructions only if optional M003b self-update is closed and advertised.
 
 ## 4. Acceptance criteria
 
@@ -56,3 +61,15 @@ Stop release qualification on checksum/provenance mismatch, schema drift, secret
 ## 6. Closure evidence
 
 Create `plans/closure/release-operational-qualification/004-status.md` with a requirement-to-evidence matrix, artifact hashes, platform results, schema/redaction tests, security review, docs reconciliation, and final release disposition.
+
+
+## 8. Current unblock condition
+
+For the first standalone release, this plan becomes ready when:
+
+1. Release corrective C001 obtains hosted artifact evidence against a valid
+   release tag and Release M002 is operationally qualified; and
+2. Release corrective C002 closes the stale ownership/documentation cleanup.
+
+Eggpack producer adoption (M003a) and Eggup self-update (M003b) are not first
+release gates.
