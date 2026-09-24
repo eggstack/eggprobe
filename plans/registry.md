@@ -1,156 +1,169 @@
 # Eggprobe Active Planning Registry
 
 This file is the compact control surface for active interim planning. Detailed
-requirements remain in the canonical documents, subsystem roadmaps,
+requirements remain in canonical documents, ADRs, subsystem roadmaps,
 implementation plans, closure records, corrective addenda, and Git history.
 
-Canonical direction:
+## Canonical direction
 
 - `plans/000-long-term-specification.md`
 - `plans/001-terminology-and-domain-model.md`
 - `plans/002-long-term-roadmap.md`
 - `plans/003-planning-process.md`
 - `plans/adrs/ADR-0001-json-first-core-and-transport-ownership.md`
+- `plans/adrs/ADR-0002-release-producer-consumer-ownership.md`
 
 ## Status vocabulary
 
-- **proposed** — roadmap or plan exists but is not approved for execution.
-- **ready** — dependencies/interfaces are satisfied; plan may be handed off.
+- **proposed** — roadmap/plan exists but is not approved for execution.
+- **ready** — hard dependencies/interfaces are satisfied.
 - **active** — implementation or closure work is in progress.
 - **blocked** — a named dependency/evidence requirement prevents progress.
-- **closing** — implementation landed and closure evidence is being gathered.
+- **closing** — implementation landed; closure evidence is being gathered.
 - **closed** — closure record accepted.
-- **conditionally closed** — implementation is substantially complete but named evidence remains.
-- **corrective required** — historical closure evidence exists, but a later finding must close before that area is treated as currently qualified.
-- **superseded** — replaced by another document.
-- **archived** — no longer active and retained for traceability.
+- **conditionally closed** — implementation is substantially complete with
+  named evidence outstanding.
+- **corrective required** — historical closure exists but a later finding must
+  close before current qualification.
+- **superseded** — replaced by a newer plan/decision.
+- **archived** — retained only for traceability.
 
-## Current repository baseline
+## Current baselines
 
-Planning/audit baseline for this corrective round:
+Current qualified product implementation head reviewed:
 
-`24965aa0ba2696b201e9c74531920877529821d5`
+`54cbebbd50c269ee8b6271c45c5d124784ac54a9`
 
-The large implementation commit under review is:
+Release ownership realignment planning baseline:
 
-`792ad65524a869d2ec22ba88dd9daea427c74cab`
+`a96911854b73e055ab67ea2f7c1592796f031d58`
 
-Historical closure records from that implementation remain immutable evidence.
-They are not sufficient to override the corrective gates registered below.
+The earlier broad implementation commit
+`792ad65524a869d2ec22ba88dd9daea427c74cab` remains historical evidence; its
+post-closure findings have been handled by the registered corrective sequence.
 
 ## Active workstreams
 
 | Workstream | Status | Current work | Authority |
 |---|---|---|---|
 | Foundation diagnostic contract | closed corrective | C002 closed | `plans/subsystems/foundation-diagnostic-contract-corrective-addendum.md` |
-| Transport/probe engine | closed corrective | C001 and C002 closed against Eggress 1.0.8 | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
+| Transport/probe engine | closed corrective | C001/C002 closed; Eggress 1.0.8 qualified | `plans/subsystems/transport-probe-engine-corrective-addendum.md` |
 | CLI/automation | closed corrective | C001 closed | `plans/subsystems/cli-automation-corrective-addendum.md` |
-| Release/packaging | active corrective | C001 conditionally closed; hosted tag evidence pending | `plans/subsystems/release-operational-qualification-corrective-addendum.md` |
-| Shared updater integration | blocked | Release M003 | no published stable `eggup` interface |
-| Long-range ICMP/path + QUIC/H3 | roadmap-level | no implementation handoff | prerequisite platform/datagram ownership unresolved |
+| Release/packaging | active | C001 conditionally closed; C002 ready | `plans/subsystems/release-operational-qualification-roadmap.md` |
+| Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
+| Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
+| Native path + QUIC/H3 expansion | roadmap-level | no implementation handoff | Phase 8/9 prerequisites unresolved |
 
-## Dependency-ready implementation plans
+## Dependency-ready work
 
-| Workstream | Milestone | Status | Implementation plan | Handoff note |
+| Workstream | Milestone | Status | Plan | Handoff note |
 |---|---|---|---|---|
-| Release corrective | C001 packaging workflow correction + hosted evidence | conditionally closed | `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md` | Hosted dispatch awaits an existing release tag; local package evidence is recorded. |
-| Transport corrective | C002 routed/TLS/transport qualification | closed | `plans/implementation/transport-probe-engine-corrective/002-routed-tls-and-transport-qualification.md` | Closure: `plans/closure/transport-probe-engine-corrective/002-status.md`. |
+| Release corrective | C002 release-boundary/documentation cleanup | ready | `plans/implementation/release-operational-qualification-corrective/002-release-boundary-and-documentation-cleanup.md` | Documentation/planning-adjacent cleanup only; no tag/publication/integration. |
 
-## Registered blocked corrective plans
+## Operational evidence gate
 
-| Workstream | Milestone | Status | Implementation plan | Blocker |
+Release corrective C001 is **conditionally closed**, not waiting on code:
+
+- plan: `plans/implementation/release-operational-qualification-corrective/001-packaging-workflow-correction-and-hosted-evidence.md`;
+- evidence: `plans/closure/release-operational-qualification-corrective/001-status.md`;
+- remaining condition: create/use an intentional valid release tag and obtain a
+  successful hosted packaging run with artifact/hash/native-smoke evidence.
+
+That evidence is the real first-release blocker. It is not an Eggup blocker.
+
+## Registered blocked/deferred plans
+
+| Workstream | Milestone | Status | Plan | Blocker / readiness gate |
 |---|---|---|---|---|
-| Release M003 | shared installer/update integration | blocked | `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md` | stable published `eggup` interface |
-| Release M004 | release qualification/operator docs | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | release corrective C001 hosted tag evidence and Release M002 operational qualification; M003 only if updater advertised |
+| Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | selected Eggpack manifest/build/finalization/bootstrap/CI interfaces must be closure-backed |
+| Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | stable Eggpack manifest/interoperability + Eggup consumer adapter/API + product decision |
+| Release qualification | M004 | blocked | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | M002/C001 hosted artifact evidence + Release C002 |
 
-## Corrective findings and dispositions
+## Superseded planning
 
-### Foundation C002
+Historical Release M003 mixed producer release construction/mapping with
+consumer deployment/update behavior.
 
-- historical `RouteSummary::Eggress { expression: String }` was not structurally secret-safe;
-- historical report schema permitted arbitrary route expression text;
-- HTTP authority parsing is hand-written and mishandles scheme-default ports/edge cases;
-- corrected machine contract must move to schema 0.2 while preserving historical 0.1 artifacts.
+- historical plan:
+  `plans/implementation/release-operational-qualification/003-shared-installer-update-integration.md`;
+- historical blocked disposition:
+  `plans/closure/release-operational-qualification/003-status.md`;
+- current disposition: **superseded by ADR-0002, M003a, and M003b**.
 
-### Transport C001/C002
+Do not execute the historical M003 plan and do not treat its old Eggup blocker
+as a current first-release gate.
 
-Closed by corrective C001 and C002 closure records. C001 fixes the policy,
-retry, deadline, and direct-error semantics; C002 qualifies typed Eggress
-provenance, TLS, routed HTTP, cancellation, and explicit DNS/H3 limitations.
+## Release ownership boundary
 
-- strict target policy can be bypassed by direct Eggfetch HTTP because the actual dial path does not use the policy-aware resolver;
-- nonzero retry configuration is accepted but ignored;
-- execution/deadline/cancellation evidence is incomplete;
-- direct TCP omits observable local address;
-- Eggress failures lose detailed kind/stage/hop/protocol provenance;
-- required standalone TLS, SOCKS5, HTTP CONNECT, multi-hop, and routed HTTP fixture evidence is absent;
-- routed H3 semantics are not yet represented as an explicit structured unsupported request.
+ADR-0002 is authoritative:
 
-### Transport C002 interface blocker (resolved)
+| Concern | Owner |
+|---|---|
+| target/artifact release identity | Eggpack |
+| package/archive construction | Eggpack |
+| final artifact manifest/digest/size evidence | Eggpack |
+| bootstrap installer generation | Eggpack |
+| generated release CI/staging/publication | Eggpack |
+| release/version selection policy | Eggprobe |
+| supported-target claims | Eggprobe |
+| whether self-update is exposed | Eggprobe |
+| consumer acquisition/verification | Eggup |
+| local staging/locking/commit/rollback/recovery | Eggup |
+| install receipt/service lifecycle | Eggup |
 
-Eggress 1.0.7 collapsed `OutboundConnector::connect_tcp` failures to a string,
-so Transport C002 was initially blocked. Published Eggress 1.0.8 adds detailed
-connect methods and typed kind/stage/hop/protocol accessors. C002 used that
-public API without parsing display strings or copying Eggress code and is
-closed; see `plans/closure/transport-probe-engine-corrective/002-status.md`.
-
-### CLI C001
-
-- `check` adds an HTTP assertion even with no HTTP probe;
-- `--concurrency` is validated but batch execution is sequential;
-- `compare` merges both sides into one statistic set and always exits 0;
-- direct/routed role comparability is not validated;
-- internal/interruption exit semantics are not demonstrated.
-
-### Release C001
-
-- Linux aarch64 cross-build attempts to execute an aarch64 binary on x86_64;
-- checksum glob includes unpacked directories;
-- required workflow version input is ignored;
-- source/tag/Cargo version authority is not proven;
-- hosted packaging/artifact/hash evidence is absent.
+A standalone Eggprobe archive release may qualify before M003a or M003b.
 
 ## Current execution order
 
-1. **Foundation C002** and **Release corrective C001** may execute in parallel.
-2. After Foundation C002 closes, execute **Transport corrective C001**.
-3. After Transport C001 closes, CLI C001 may execute independently and is now
-   closed. Transport C002 is also closed against Eggress 1.0.8.
-4. Product correctives (Foundation, Transport, CLI) are closed. Execute **Release M004** without updater claims only after Release C001 hosted tag evidence and Release M002 operational qualification are recorded; both remain gates, so M004 remains blocked.
-5. **Release M003** remains blocked until a stable shared `eggup` interface exists.
-6. Do not generate Phase 8/9 implementation plans until the platform/datagram ownership prerequisites exist.
+1. Execute **Release corrective C002** now; it has no external blocker.
+2. Independently, when maintainers choose a first release identity/tag, complete
+   the remaining **C001 hosted evidence** and promote M002 to operationally
+   qualified.
+3. When C001/M002 evidence and C002 are closed, execute **Release M004** and
+   qualify the first standalone archive release.
+4. Do not wait for M003a or M003b to complete the first release.
+5. Author/execute M003a only after the specific Eggpack interfaces selected for
+   adoption are closure-backed.
+6. Author/execute M003b only if Eggprobe chooses to expose runtime self-update
+   and the Eggpack->Eggup consumer seam is stable.
+7. Keep Phase 8/9 work roadmap-level until their platform/datagram ownership
+   prerequisites exist.
+
+## Shared infrastructure baselines
+
+These are reviewed state, not permanent dependency pins:
+
+| Project | Reviewed state | Relevant boundary |
+|---|---|---|
+| Eggfetch | 0.2.0 line | HTTP engine/custom dialer/origin TLS |
+| Eggress | 1.0.8 line | listener-free routes + typed detailed errors |
+| Eggpack | Contract M002 + Manifest M001/M001a closed; Manifest M002/Build M001/Bootstrap M001/Eggup interop M001 ready at review | producer release authority |
+| Eggup | producer distribution retired/transferred; core/acquisition/rollback consumer layers qualified; future Eggpack-manifest adapter not yet stable | consumer deployment authority |
+| CodeGG planning convention | `239c51d19a63e8cf369a952b78d1e55092f4653b` | canonical -> ADR -> roadmap -> plan -> closure -> corrective lifecycle |
+
+Implementation agents MUST re-check sibling interfaces at the actual execution
+baseline.
 
 ## Historical evidence
 
-| Work | Historical status | Evidence | Current qualification note |
+| Work | Historical status | Evidence | Current note |
 |---|---|---|---|
-| Foundation M001 | closed | `plans/closure/foundation-diagnostic-contract/001-status.md` | preserved |
-| Foundation corrective C001 | closed | `plans/closure/foundation-diagnostic-contract-corrective/001-status.md` | superseded only by narrower C002 findings |
-| Foundation M002 | closed | `plans/closure/foundation-diagnostic-contract/002-status.md` | schema contract requires C002 correction |
-| Transport M001-M006 | closed records | `plans/closure/transport-probe-engine/` | current release qualification gated by Transport C001/C002 |
-| CLI M001-M004 | closed records | `plans/closure/cli-automation/` | current automation qualification gated by CLI C001 |
+| Foundation M001/M002 + C001/C002 | closed | `plans/closure/foundation-diagnostic-contract/` and corrective closure | current contract qualified |
+| Transport M001-M006 + C001/C002 | closed | transport closure trees | current transport qualified against Eggress 1.0.8 |
+| CLI M001-M004 + C001 | closed | CLI closure trees | automation corrective closed |
 | Release M001 | closed | `plans/closure/release-operational-qualification/001-status.md` | retained |
-| Release M002 | conditionally closed record | `plans/closure/release-operational-qualification/002-status.md` | corrective required before operational qualification |
-| Release M003 | blocked | `plans/closure/release-operational-qualification/003-status.md` | external interface blocker remains |
-
-## External interface baselines
-
-These are research baselines, not permanent dependency pins:
-
-| Project | Reviewed baseline | Relevant interface |
-|---|---|---|
-| Eggfetch | 0.2.0 line | HTTP engine, custom `Dialer`, origin TLS/metadata |
-| Eggress | 1.0.8 line | listener-free outbound connector, typed detailed route errors, chain metadata |
-| CodeGG planning convention | `239c51d19a63e8cf369a952b78d1e55092f4653b` | canonical -> ADR -> roadmap -> implementation -> closure -> corrective lifecycle |
-
-Implementation agents MUST re-check current published dependency surfaces at
-their execution baseline.
+| Release M002 | historical conditional closure | `plans/closure/release-operational-qualification/002-status.md` | current operational gate is C001 hosted evidence |
+| historical Release M003 | blocked disposition | `plans/closure/release-operational-qualification/003-status.md` | superseded by ADR-0002 |
 
 ## Planning hygiene
 
-- Historical closure records are never silently rewritten to erase later findings.
-- Corrective addenda are current authority where they conflict with historical closure state.
-- Register a plan here before handoff.
-- Do not promote a blocked corrective until its named dependency actually closes.
-- Release qualification must use demonstrated fixture/workflow evidence, not code inspection alone.
-- Do not copy Eggfetch, Eggress, or eggup functionality into Eggprobe to bypass an interface blocker.
+- Historical closure/disposition records are preserved.
+- Corrective addenda/ADRs are current authority where later evidence changes a
+  planning assumption.
+- Register a plan before implementation handoff.
+- Do not promote blocked/deferred integration work before named sibling
+  interfaces actually close.
+- Release qualification uses demonstrated artifact/workflow evidence, not code
+  inspection alone.
+- Do not copy Eggfetch, Eggress, Eggpack, or Eggup ownership into Eggprobe to
+  bypass an interface blocker.
