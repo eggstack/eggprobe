@@ -24,7 +24,7 @@ use crate::{
         plan::{ProbePlan, ProbeSpec},
         probe::{
             DnsEvidence, HttpEvidence, ProbeEvidence, ProbeKind, ProbeResult, ProbeStatus,
-            TcpEvidence, TlsEvidence,
+            TcpEvidence, TlsEvidence, UdpEvidence, UdpOutcome,
         },
         report::{ProbeReport, ReportStatus, ToolProvenance},
         route::RouteSpec,
@@ -147,10 +147,12 @@ impl ProbeEngine {
             }
             ProbeSpec::Http { url, method } => self.http(plan, url, method, deadline_at).await,
             ProbeSpec::Route => self.route(plan).await,
-            ProbeSpec::IcmpEcho { .. }
-            | ProbeSpec::Udp { .. }
-            | ProbeSpec::Trace { .. }
-            | ProbeSpec::PathMtu { .. } => {
+            ProbeSpec::Udp {
+                port,
+                payload,
+                receive,
+            } => self.udp(plan, *port, payload, *receive, deadline_at).await,
+            ProbeSpec::IcmpEcho { .. } | ProbeSpec::Trace { .. } | ProbeSpec::PathMtu { .. } => {
                 return ProbeResult {
                     kind,
                     status: ProbeStatus::Unsupported,
@@ -309,6 +311,88 @@ impl ProbeEngine {
                 .collect(),
             routes_truncated: observed.candidates_truncated,
             correlation,
+        }))
+    }
+
+    async fn udp(
+        &self,
+        plan: &ProbePlan,
+        port: u16,
+        payload: &[u8],
+        receive: bool,
+        deadline_at: tokio::time::Instant,
+    ) -> Result<ProbeEvidence, DiagnosticError> {
+        if !matches!(plan.route, RouteSpec::Direct) {
+            return Err(simple_error(
+                DiagnosticErrorKind::Unsupported,
+                DiagnosticStage::PacketExchange,
+                "native diagnostics require the direct route",
+            ));
+        }
+        let destination = self
+            .addresses(&plan.target.host, port)
+            .await?
+            .into_iter()
+            .next()
+            .expect("address resolver returns a non-empty list")
+            .ip();
+        if destination.is_unspecified()
+            || destination.is_multicast()
+            || matches!(destination, IpAddr::V4(address) if address == std::net::Ipv4Addr::BROADCAST)
+            || matches!(destination, IpAddr::V4(address) if address.is_link_local())
+            || matches!(destination, IpAddr::V6(address) if (address.segments()[0] & 0xffc0) == 0xfe80)
+        {
+            return Err(simple_error(
+                DiagnosticErrorKind::Policy,
+                DiagnosticStage::PacketExchange,
+                "destination address class is not supported",
+            ));
+        }
+        let timeout = deadline_at.saturating_duration_since(tokio::time::Instant::now());
+        if timeout.is_zero() {
+            return Err(simple_error(
+                DiagnosticErrorKind::Timeout,
+                DiagnosticStage::Deadline,
+                "execution deadline exceeded",
+            ));
+        }
+        let observed = eggprobe_native::udp_exchange(
+            std::net::SocketAddr::new(destination, port),
+            payload,
+            receive,
+            timeout,
+        )
+        .await
+        .map_err(|error| {
+            let kind = match error.kind {
+                eggprobe_native::NativeErrorKind::PermissionDenied => {
+                    DiagnosticErrorKind::PermissionDenied
+                }
+                eggprobe_native::NativeErrorKind::Unsupported => DiagnosticErrorKind::Unsupported,
+                eggprobe_native::NativeErrorKind::Timeout => DiagnosticErrorKind::Timeout,
+                eggprobe_native::NativeErrorKind::Unreachable => {
+                    DiagnosticErrorKind::NetworkUnreachable
+                }
+                eggprobe_native::NativeErrorKind::Io => DiagnosticErrorKind::Io,
+            };
+            simple_error(kind, DiagnosticStage::PacketExchange, "UDP exchange failed")
+        })?;
+        // A transmitted datagram followed by timeout or unreachable feedback is
+        // a completed diagnostic observation, not a local execution failure.
+        // Only bind/connect/send failures above reach the Failed path.
+        let outcome = match observed.outcome {
+            eggprobe_native::UdpExchangeOutcome::Sent => UdpOutcome::Sent,
+            eggprobe_native::UdpExchangeOutcome::Response => UdpOutcome::Response,
+            eggprobe_native::UdpExchangeOutcome::Unreachable => UdpOutcome::Unreachable,
+            eggprobe_native::UdpExchangeOutcome::Timeout => UdpOutcome::Timeout,
+        };
+        Ok(ProbeEvidence::Udp(UdpEvidence {
+            local: observed.local.map(|address| address.to_string()),
+            transmitted_bytes: observed.transmitted_bytes,
+            outcome,
+            response_source: observed.response_source.map(|address| address.to_string()),
+            response_bytes: observed.response_bytes,
+            response_sample: observed.response_sample,
         }))
     }
 

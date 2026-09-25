@@ -141,6 +141,139 @@ pub struct RouteInspection {
     pub ambiguous: bool,
 }
 
+/// Maximum request payload accepted for one direct UDP datagram.
+pub const MAX_UDP_PAYLOAD_BYTES: usize = 1200;
+
+/// Maximum response bytes retained in a UDP response sample.
+pub const MAX_UDP_RESPONSE_SAMPLE_BYTES: usize = 1400;
+
+/// Outcome of one direct UDP exchange, independent of remote service health.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UdpExchangeOutcome {
+    /// The datagram was accepted by the local socket; no reply was awaited.
+    Sent,
+    /// One reply datagram was observed.
+    Response,
+    /// The operating system surfaced an unreachable condition.
+    Unreachable,
+    /// No reply arrived before the bounded receive window elapsed.
+    Timeout,
+}
+
+/// Backend-neutral observation of one direct UDP exchange.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UdpExchange {
+    /// Local socket address selected for the exchange.
+    pub local: Option<std::net::SocketAddr>,
+    /// Request bytes accepted by the local socket.
+    pub transmitted_bytes: u32,
+    /// Exchange outcome.
+    pub outcome: UdpExchangeOutcome,
+    /// Source of the observed reply, when one arrived.
+    pub response_source: Option<std::net::SocketAddr>,
+    /// Reply datagram bytes observed, when one arrived.
+    pub response_bytes: Option<u32>,
+    /// Bounded reply sample, present only when a reply was awaited.
+    pub response_sample: Option<Vec<u8>>,
+}
+
+/// Exchange one bounded datagram with a directly connected UDP socket.
+///
+/// A successful local `send` reports transmission only; it never claims the
+/// remote service is healthy. When `receive` is set, one reply is awaited
+/// for at most `timeout`; silence yields [`UdpExchangeOutcome::Timeout`] and
+/// an OS unreachable signal yields [`UdpExchangeOutcome::Unreachable`], both
+/// as completed observations rather than local failures. Dropping the
+/// returned future cancels the exchange and closes the socket.
+///
+/// # Errors
+///
+/// Returns a bounded native error when the payload exceeds
+/// [`MAX_UDP_PAYLOAD_BYTES`], the socket cannot be bound or connected, or the
+/// local send fails.
+pub async fn udp_exchange(
+    target: std::net::SocketAddr,
+    payload: &[u8],
+    receive: bool,
+    timeout: std::time::Duration,
+) -> Result<UdpExchange, NativeError> {
+    if payload.len() > MAX_UDP_PAYLOAD_BYTES {
+        return Err(NativeError {
+            kind: NativeErrorKind::Io,
+        });
+    }
+    let bind: std::net::SocketAddr = match target {
+        std::net::SocketAddr::V4(_) => {
+            std::net::SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
+        }
+        std::net::SocketAddr::V6(_) => {
+            std::net::SocketAddr::new(IpAddr::V6(std::net::Ipv6Addr::UNSPECIFIED), 0)
+        }
+    };
+    let socket = tokio::net::UdpSocket::bind(bind)
+        .await
+        .map_err(|error| normalize_io(&error))?;
+    socket
+        .connect(target)
+        .await
+        .map_err(|error| normalize_io(&error))?;
+    let local = socket.local_addr().ok();
+    let sent = socket
+        .send(payload)
+        .await
+        .map_err(|error| normalize_io(&error))?;
+    let transmitted_bytes = u32::try_from(sent).unwrap_or(u32::MAX);
+    if !receive {
+        return Ok(UdpExchange {
+            local,
+            transmitted_bytes,
+            outcome: UdpExchangeOutcome::Sent,
+            response_source: None,
+            response_bytes: None,
+            response_sample: None,
+        });
+    }
+    let mut buffer = vec![0_u8; MAX_UDP_RESPONSE_SAMPLE_BYTES + 648];
+    match tokio::time::timeout(timeout, socket.recv_from(&mut buffer)).await {
+        Ok(Ok((len, source))) => {
+            let response_bytes = u32::try_from(len).unwrap_or(u32::MAX);
+            let sample = buffer
+                .into_iter()
+                .take(len.min(MAX_UDP_RESPONSE_SAMPLE_BYTES))
+                .collect::<Vec<_>>();
+            Ok(UdpExchange {
+                local,
+                transmitted_bytes,
+                outcome: UdpExchangeOutcome::Response,
+                response_source: Some(source),
+                response_bytes: Some(response_bytes),
+                response_sample: Some(sample),
+            })
+        }
+        Ok(Err(error)) => match error.kind() {
+            std::io::ErrorKind::ConnectionRefused
+            | std::io::ErrorKind::HostUnreachable
+            | std::io::ErrorKind::NetworkUnreachable => Ok(UdpExchange {
+                local,
+                transmitted_bytes,
+                outcome: UdpExchangeOutcome::Unreachable,
+                response_source: None,
+                response_bytes: None,
+                response_sample: None,
+            }),
+            _ => Err(normalize_io(&error)),
+        },
+        Err(_) => Ok(UdpExchange {
+            local,
+            transmitted_bytes,
+            outcome: UdpExchangeOutcome::Timeout,
+            response_source: None,
+            response_bytes: None,
+            response_sample: None,
+        }),
+    }
+}
+
 /// Inspect local interface and route metadata for one resolved destination.
 ///
 /// # Errors
@@ -306,6 +439,63 @@ mod tests {
             24,
             "2001:db8::1".parse().unwrap()
         ));
+    }
+
+    #[tokio::test]
+    async fn udp_exchange_reports_send_only_transmission() {
+        let target: std::net::SocketAddr = "127.0.0.1:9".parse().unwrap();
+        let exchange = udp_exchange(target, b"ping", false, std::time::Duration::from_secs(1))
+            .await
+            .unwrap();
+        assert_eq!(exchange.outcome, UdpExchangeOutcome::Sent);
+        assert_eq!(exchange.transmitted_bytes, 4);
+        assert!(exchange.local.is_some());
+        assert_eq!(exchange.response_source, None);
+        assert_eq!(exchange.response_sample, None);
+    }
+
+    #[tokio::test]
+    async fn udp_exchange_observes_loopback_echo_reply() {
+        let echo = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let address = echo.local_addr().unwrap();
+        let task = tokio::spawn(async move {
+            let mut buffer = [0_u8; 2048];
+            let (len, source) = echo.recv_from(&mut buffer).await.unwrap();
+            echo.send_to(&buffer[..len], source).await.unwrap();
+        });
+        let exchange = udp_exchange(address, b"hello", true, std::time::Duration::from_secs(5))
+            .await
+            .unwrap();
+        task.await.unwrap();
+        assert_eq!(exchange.outcome, UdpExchangeOutcome::Response);
+        assert_eq!(exchange.transmitted_bytes, 5);
+        assert_eq!(exchange.response_bytes, Some(5));
+        assert_eq!(exchange.response_sample, Some(b"hello".to_vec()));
+    }
+
+    #[tokio::test]
+    async fn udp_exchange_reports_silence_as_timeout_not_failure() {
+        let silent = tokio::net::UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let address = silent.local_addr().unwrap();
+        let exchange = udp_exchange(
+            address,
+            b"ping",
+            true,
+            std::time::Duration::from_millis(200),
+        )
+        .await
+        .unwrap();
+        assert_eq!(exchange.outcome, UdpExchangeOutcome::Timeout);
+        assert_eq!(exchange.transmitted_bytes, 4);
+        drop(silent);
+    }
+
+    #[tokio::test]
+    async fn udp_exchange_rejects_oversize_payload_before_socket_use() {
+        let target: std::net::SocketAddr = "127.0.0.1:9".parse().unwrap();
+        let payload = vec![0_u8; MAX_UDP_PAYLOAD_BYTES + 1];
+        let result = udp_exchange(target, &payload, false, std::time::Duration::from_secs(1)).await;
+        assert!(result.is_err());
     }
 }
 

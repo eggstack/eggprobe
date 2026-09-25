@@ -21,6 +21,13 @@ Shared resolution `addresses()` → `resolve_addresses()` (`engine.rs:185-191,83
 * **TLS direct** (`engine.rs:276-287,374-423`): SNI from `server_name` or target host (invalid → `Tls/TlsHandshake`); **only first resolved address** (unlike TCP); `TcpStream::connect` then `tls_handshake` with webpki roots, ALPN `[h2, http/1.1]`; failure → `Tls/TlsHandshake "TLS handshake failed"` (detail discarded); success → `TlsEvidence{version, alpn, cipher_suite}`.
 * **Deadline errors** (`engine.rs:881-903`): per-`ProbeSpec` `Failed/Timeout/Deadline`, `timing: None`.
 
+## 2b. Direct UDP (`eggprobe-native::udp_exchange`, `ProbeEngine::udp`)
+
+* `udp()` (`engine.rs`, `ProbeEngine::udp`): direct-only (Eggress → `Unsupported/PacketExchange`); resolves the first address under `TargetPolicy`; rejects unspecified/multicast/broadcast/link-local classes with `Policy/PacketExchange` before socket creation; delegates the exchange to `eggprobe-native`.
+* `udp_exchange()` (`eggprobe-native/src/lib.rs`): family-correct ephemeral bind, connected send of at most `MAX_UDP_PAYLOAD_BYTES` (1200), optional single-reply window bounded by the remaining outer deadline. Local `send` success never claims remote health.
+* Completed observations (`ProbeStatus::Ok` + `UdpEvidence`): `Sent` (no reply awaited), `Response` (source, byte count, sample capped at `MAX_UDP_RESPONSE_SAMPLE_BYTES` = 1400, present only when a reply was awaited), `Timeout` (silence), `Unreachable` (`ConnectionRefused/HostUnreachable/NetworkUnreachable` surfaced on the connected socket). Only bind/connect/send failures become `Failed` probe errors. No retries; cancellation drops the socket with no background task.
+* Request payload bytes are input-only and never serialized into reports. CLI: `eggprobe udp <target> --port <p> [--payload <text>] [--receive]` (`eggprobe-cli/src/lib.rs`, `UdpArgs`/`plan_for_udp`); `--port` required, payload capped at 1200.
+
 ## 3. Eggfetch-backed HTTP
 
 Deps (`eggprobe-core/Cargo.toml:12-14`): `eggfetch-core 0.2.0` (`advanced-routing,standard-http1,standard-http2,tls-rustls`), no QUIC/H3; `eggress-core`/`eggress-embed` 1.0.8; `tokio 1.47`, `rustls 0.23`, `tokio-rustls 0.26`.

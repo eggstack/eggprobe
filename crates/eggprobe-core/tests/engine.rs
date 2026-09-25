@@ -103,11 +103,6 @@ async fn native_contract_operations_are_typed_unsupported_until_backend_lands() 
             count: 1,
             payload_bytes: 56,
         },
-        ProbeSpec::Udp {
-            port: 53,
-            payload: vec![],
-            receive: false,
-        },
         ProbeSpec::Trace {
             max_hops: 3,
             attempts_per_hop: 1,
@@ -124,7 +119,6 @@ async fn native_contract_operations_are_typed_unsupported_until_backend_lands() 
     let kinds = [
         eggprobe_core::ProbeKind::Route,
         eggprobe_core::ProbeKind::IcmpEcho,
-        eggprobe_core::ProbeKind::Udp,
         eggprobe_core::ProbeKind::Trace,
         eggprobe_core::ProbeKind::PathMtu,
     ];
@@ -140,6 +134,256 @@ async fn native_contract_operations_are_typed_unsupported_until_backend_lands() 
     assert!(report.probes[1..]
         .iter()
         .all(|probe| probe.status == eggprobe_core::ProbeStatus::Unsupported));
+}
+
+#[tokio::test]
+async fn udp_probe_reports_loopback_echo_response() {
+    use tokio::net::UdpSocket;
+    let echo = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let port = echo.local_addr().unwrap().port();
+    let task = tokio::spawn(async move {
+        let mut buffer = [0_u8; 2048];
+        let (len, source) = echo.recv_from(&mut buffer).await.unwrap();
+        echo.send_to(&buffer[..len], source).await.unwrap();
+    });
+    let report = ProbeEngine::default()
+        .execute(plan(
+            TargetSpec::new("127.0.0.1", Some(port)).unwrap(),
+            vec![ProbeSpec::Udp {
+                port,
+                payload: b"echo-probe".to_vec(),
+                receive: true,
+            }],
+        ))
+        .await;
+    task.await.unwrap();
+    assert_eq!(report.status, ReportStatus::Ok);
+    let Some(eggprobe_core::ProbeEvidence::Udp(evidence)) = &report.probes[0].evidence else {
+        panic!("UDP evidence missing");
+    };
+    assert_eq!(evidence.outcome, eggprobe_core::UdpOutcome::Response);
+    assert_eq!(evidence.transmitted_bytes, 10);
+    assert!(evidence.local.is_some());
+    assert!(evidence.response_source.is_some());
+    assert_eq!(evidence.response_bytes, Some(10));
+    assert_eq!(evidence.response_sample, Some(b"echo-probe".to_vec()));
+    // Request payload bytes are input-only and never reproduced in reports.
+    let rendered = serde_json::to_string(&report).unwrap();
+    assert!(!rendered.contains("echo-probe"));
+}
+
+#[tokio::test]
+async fn udp_probe_reports_ipv6_loopback_echo_response() {
+    use tokio::net::UdpSocket;
+    let echo = UdpSocket::bind("[::1]:0").await.unwrap();
+    let port = echo.local_addr().unwrap().port();
+    let task = tokio::spawn(async move {
+        let mut buffer = [0_u8; 2048];
+        let (len, source) = echo.recv_from(&mut buffer).await.unwrap();
+        echo.send_to(&buffer[..len], source).await.unwrap();
+    });
+    let report = ProbeEngine::default()
+        .execute(plan(
+            TargetSpec::new("::1", Some(port)).unwrap(),
+            vec![ProbeSpec::Udp {
+                port,
+                payload: vec![1, 2, 3],
+                receive: true,
+            }],
+        ))
+        .await;
+    task.await.unwrap();
+    assert_eq!(report.status, ReportStatus::Ok);
+    let Some(eggprobe_core::ProbeEvidence::Udp(evidence)) = &report.probes[0].evidence else {
+        panic!("IPv6 UDP evidence missing");
+    };
+    assert_eq!(evidence.outcome, eggprobe_core::UdpOutcome::Response);
+    assert_eq!(evidence.response_bytes, Some(3));
+}
+
+#[tokio::test]
+async fn udp_probe_without_receive_reports_transmission_only() {
+    use tokio::net::UdpSocket;
+    let discard = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let port = discard.local_addr().unwrap().port();
+    let report = ProbeEngine::default()
+        .execute(plan(
+            TargetSpec::new("127.0.0.1", Some(port)).unwrap(),
+            vec![ProbeSpec::Udp {
+                port,
+                payload: vec![],
+                receive: false,
+            }],
+        ))
+        .await;
+    drop(discard);
+    assert_eq!(report.status, ReportStatus::Ok);
+    let Some(eggprobe_core::ProbeEvidence::Udp(evidence)) = &report.probes[0].evidence else {
+        panic!("UDP evidence missing");
+    };
+    assert_eq!(evidence.outcome, eggprobe_core::UdpOutcome::Sent);
+    assert_eq!(evidence.transmitted_bytes, 0);
+    assert_eq!(evidence.response_sample, None);
+}
+
+#[tokio::test]
+async fn udp_probe_reports_silence_as_timeout_observation() {
+    use tokio::net::UdpSocket;
+    let silent = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let port = silent.local_addr().unwrap().port();
+    let mut quiet = plan(
+        TargetSpec::new("127.0.0.1", Some(port)).unwrap(),
+        vec![ProbeSpec::Udp {
+            port,
+            payload: b"ping".to_vec(),
+            receive: true,
+        }],
+    );
+    quiet.execution.deadline = eggprobe_core::DurationMicros::from_micros(500_000);
+    let report = ProbeEngine::default().execute(quiet).await;
+    drop(silent);
+    // Local transmission succeeded, so silence is a completed Timeout
+    // observation rather than a local execution failure.
+    assert_eq!(report.status, ReportStatus::Ok);
+    let Some(eggprobe_core::ProbeEvidence::Udp(evidence)) = &report.probes[0].evidence else {
+        panic!("UDP evidence missing");
+    };
+    assert_eq!(evidence.outcome, eggprobe_core::UdpOutcome::Timeout);
+    assert_eq!(evidence.transmitted_bytes, 4);
+}
+
+#[tokio::test]
+async fn udp_probe_reports_closed_port_without_brittle_timing() {
+    use tokio::net::UdpSocket;
+    let claimed = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let port = claimed.local_addr().unwrap().port();
+    drop(claimed);
+    let report = ProbeEngine::default()
+        .execute(plan(
+            TargetSpec::new("127.0.0.1", Some(port)).unwrap(),
+            vec![ProbeSpec::Udp {
+                port,
+                payload: b"ping".to_vec(),
+                receive: true,
+            }],
+        ))
+        .await;
+    // ICMP port-unreachable delivery is platform-specific: Linux surfaces it
+    // on the connected socket while other hosts may stay silent. Either
+    // completed observation preserves the transmitted byte count.
+    assert_eq!(report.status, ReportStatus::Ok);
+    let Some(eggprobe_core::ProbeEvidence::Udp(evidence)) = &report.probes[0].evidence else {
+        panic!("UDP evidence missing");
+    };
+    assert!(matches!(
+        evidence.outcome,
+        eggprobe_core::UdpOutcome::Unreachable | eggprobe_core::UdpOutcome::Timeout
+    ));
+    assert_eq!(evidence.transmitted_bytes, 4);
+}
+
+#[tokio::test]
+async fn udp_probe_rejects_restricted_destination_classes() {
+    for host in [
+        "0.0.0.0",
+        "255.255.255.255",
+        "224.0.0.1",
+        "169.254.169.254",
+        "::",
+        "ff02::1",
+    ] {
+        let report = ProbeEngine::default()
+            .execute(plan(
+                TargetSpec::new(host, Some(53)).unwrap(),
+                vec![ProbeSpec::Udp {
+                    port: 53,
+                    payload: vec![],
+                    receive: false,
+                }],
+            ))
+            .await;
+        assert_eq!(report.status, ReportStatus::Failed, "host {host}");
+        assert_eq!(
+            report.probes[0].error.as_ref().unwrap().kind,
+            eggprobe_core::DiagnosticErrorKind::Policy,
+            "host {host}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn udp_probe_rejects_private_target_under_strict_policy() {
+    let report = ProbeEngine {
+        target_policy: TargetPolicy::Strict,
+    }
+    .execute(plan(
+        TargetSpec::new("127.0.0.1", Some(53)).unwrap(),
+        vec![ProbeSpec::Udp {
+            port: 53,
+            payload: vec![],
+            receive: false,
+        }],
+    ))
+    .await;
+    assert_eq!(report.status, ReportStatus::Failed);
+    assert_eq!(
+        report.probes[0].error.as_ref().unwrap().kind,
+        eggprobe_core::DiagnosticErrorKind::Policy
+    );
+}
+
+#[tokio::test]
+async fn udp_probe_never_falls_back_from_eggress_to_direct() {
+    use tokio::net::UdpSocket;
+    let discard = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+    let port = discard.local_addr().unwrap().port();
+    let mut routed = plan(
+        TargetSpec::new("127.0.0.1", Some(port)).unwrap(),
+        vec![ProbeSpec::Udp {
+            port,
+            payload: vec![],
+            receive: false,
+        }],
+    );
+    routed.route = RouteSpec::Eggress(eggprobe_core::EggressRoute {
+        expression: "socks5://127.0.0.1:9".into(),
+    });
+    let report = ProbeEngine::default().execute(routed).await;
+    drop(discard);
+    assert_eq!(report.status, ReportStatus::Unsupported);
+    assert_eq!(
+        report.probes[0].status,
+        eggprobe_core::ProbeStatus::Unsupported
+    );
+}
+
+#[test]
+fn udp_plan_bounds_reject_zero_port_and_oversize_payload() {
+    let oversize = ProbePlan {
+        schema_version: SchemaVersion::CURRENT,
+        target: TargetSpec::new("127.0.0.1", Some(53)).unwrap(),
+        route: RouteSpec::Direct,
+        probes: vec![ProbeSpec::Udp {
+            port: 53,
+            payload: vec![0_u8; 1201],
+            receive: false,
+        }],
+        execution: ExecutionPolicy::default(),
+        assertions: vec![],
+    };
+    assert_eq!(
+        oversize.validate(),
+        Err(PlanValidationError::InvalidNativeBounds)
+    );
+    let zero_port = ProbePlan {
+        probes: vec![ProbeSpec::Udp {
+            port: 0,
+            payload: vec![],
+            receive: false,
+        }],
+        ..oversize.clone()
+    };
+    assert_eq!(zero_port.validate(), Err(PlanValidationError::InvalidPort));
 }
 
 #[tokio::test]

@@ -56,6 +56,29 @@ fn route_command_emits_target_scoped_machine_evidence() {
 }
 
 #[test]
+fn udp_command_reports_transmission_without_overstating_remote_health() {
+    let output = binary()
+        .args(["udp", "127.0.0.1", "--port", "9", "--json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["probes"][0]["kind"], "udp");
+    assert_eq!(value["probes"][0]["evidence"]["kind"], "udp");
+    assert_eq!(value["probes"][0]["evidence"]["data"]["outcome"], "sent");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn udp_command_requires_explicit_port() {
+    let output = binary()
+        .args(["udp", "127.0.0.1", "--json"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
 fn invalid_check_range_is_usage_error() {
     let output = binary()
         .args([

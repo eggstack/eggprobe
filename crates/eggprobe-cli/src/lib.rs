@@ -33,6 +33,7 @@ pub enum Command {
     Tcp(PrimitiveArgs),
     Tls(TlsArgs),
     Http(HttpArgs),
+    Udp(UdpArgs),
     Proxy(ProxyArgs),
     Check(CheckArgs),
     Run(RunArgs),
@@ -76,6 +77,18 @@ pub struct HttpArgs {
     pub strict_target: bool,
     #[arg(long)]
     pub json: bool,
+}
+/// Direct UDP controls.
+#[derive(Clone, Debug, Args)]
+pub struct UdpArgs {
+    #[command(flatten)]
+    pub primitive: PrimitiveArgs,
+    /// Optional request payload text, bounded to 1200 bytes.
+    #[arg(long)]
+    pub payload: Option<String>,
+    /// Wait for one bounded reply before completing.
+    #[arg(long)]
+    pub receive: bool,
 }
 /// Explicit proxy route controls.
 #[derive(Clone, Debug, Args)]
@@ -211,6 +224,14 @@ pub async fn execute(cli: Cli) -> Result<(i32, String), CliError> {
         }
         Command::Http(args) => {
             run_single(plan_for_http(&args)?, args.json, args.strict_target).await
+        }
+        Command::Udp(args) => {
+            run_single(
+                plan_for_udp(&args)?,
+                args.primitive.json,
+                args.primitive.strict_target,
+            )
+            .await
         }
         Command::Proxy(args) => run_single(plan_for_proxy(&args)?, args.json, false).await,
         Command::Check(args) => {
@@ -476,6 +497,24 @@ fn plan_for_http(args: &HttpArgs) -> Result<ProbePlan, String> {
             method: args.method.clone(),
         }],
         args.timeout_ms,
+        vec![],
+    ))
+}
+fn plan_for_udp(args: &UdpArgs) -> Result<ProbePlan, String> {
+    let port = args.primitive.port.ok_or("--port is required")?;
+    let payload = args.payload.clone().unwrap_or_default().into_bytes();
+    if payload.len() > 1200 {
+        return Err("UDP payload exceeds 1200 bytes".into());
+    }
+    Ok(base(
+        target(&args.primitive.target, Some(port))?,
+        route(args.primitive.via.as_deref())?,
+        vec![ProbeSpec::Udp {
+            port,
+            payload,
+            receive: args.receive,
+        }],
+        args.primitive.timeout_ms,
         vec![],
     ))
 }

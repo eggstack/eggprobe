@@ -22,6 +22,7 @@ eggprobe tcp example.com --port 443 --json
 eggprobe tls example.com --port 443 --json
 eggprobe http https://example.com/ --json
 eggprobe route example.com --json
+eggprobe udp example.com --port 53 --json
 eggprobe check example.com --port 443 --url https://example.com/ --json
 ```
 
@@ -63,6 +64,27 @@ route-table candidates. A candidate is correlation evidence, not proof of the
 kernel's selected route; policy routing may make the table view incomplete.
 Interface MTU describes the local link and is not path MTU. Native probes are
 direct-only, so a route plan using `--via` reports `unsupported`.
+
+## Direct UDP evidence
+
+`eggprobe udp <target> --port <port> [--payload <text>] [--receive] --json`
+sends one bounded datagram (at most 1200 payload bytes) from a connected UDP
+socket and reports local transmission separately from reply observation:
+
+- without `--receive`, a locally accepted send completes with outcome
+  `sent`; this proves local transmission only, never remote service health;
+- with `--receive`, one reply is awaited under the outer deadline with
+  outcome `response` (source, byte count, and a bounded 1400-byte sample),
+  `timeout` (silence is an observation, not a local failure), or
+  `unreachable` (the OS surfaced ICMP/host feedback on the connected
+  socket);
+- bind, connect, and send failures fail the probe with a structured error;
+  there is no implicit retry and no background receive task survives the
+  request;
+- unspecified, broadcast, multicast, and link-local destinations are
+  rejected by policy before any socket is created, as are Eggress-routed
+  (`--via`) UDP plans;
+- request payload bytes are input-only and never reproduced in reports.
 
 ## Troubleshooting
 
@@ -108,7 +130,9 @@ returns typed unsupported results for them until each milestone
 qualifies its backend:
 
 - ICMP echo — `M003`, blocked on a safe backend;
-- direct UDP service checks — `M004`, ready, not yet implemented;
+- direct UDP service checks — `M004`, implemented (`eggprobe udp`,
+  connected sockets, bounded payload/reply, transmit/reply/timeout/
+  unreachable semantics);
 - traceroute / path tracing — `M005`, blocked on a truthful backend;
 - active path-MTU discovery — `M006`, blocked on test seams and
   trustworthy PMTU feedback.
