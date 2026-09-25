@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001/M002/M004 closed, M005 corrective required with C005 ready, C001/C004 closed, C002 corrective required, C003/M003 blocked, M006 blocked
+Status: active planning; M001/M002/M004 closed, M005 conditionally closed via C005; C001/C004/C005 closed, C002 corrective required, C003/M003 blocked, C007 ready, C006 blocked on C007 + publication, M006 blocked
 
 Long-term references:
 
@@ -143,10 +143,17 @@ M003 ICMP echo   M004 direct UDP
        \             /
         \           /
          v         v
-       M005 traceroute/path [HISTORICAL CLOSURE; C005 CORRECTIVE REQUIRED]
+       M005 traceroute/path [CONDITIONALLY CLOSED VIA C005]
               |
-              v
-       M006 active PMTU [BLOCKED INDEPENDENTLY ON PMTU CONTROL GAP]
+       +------+-------------------+
+       |                          |
+       v                          v
+C007 #1793 fix qualification   M006 active PMTU
+[READY]                        [BLOCKED INDEPENDENTLY]
+       |
+       v
+C006 Windows live requalification
+[BLOCKED ON C007 + PUBLISHED FIX]
 ```
 
 M001 hard-depends on Phase 7 and ADR-0003. M002 hard-depends on M001. M003/M004 hard-depend only on M001; they soft-depend on M002 and are parallel branches after M001, not a sequence. M005 hard-depends on M001 plus backend qualification; M003/M004 are soft dependencies. M006 hard-depends on M001 and should follow M002/M004/M005 so route/datagram/path test seams exist. The Phase 9 routed-datagram boundary remains separate from this graph.
