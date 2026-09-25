@@ -20,9 +20,12 @@ const VARIANT: &str = "candidate-master=upstream-c0c758e";
 /// Canonical loopback target: no public Internet target is required.
 const TARGET: &str = "127.0.0.1";
 
-/// Bounded single-round, few-TTL trace (matches the C005 builder shape).
-const MAX_TTL: u8 = 2;
-const MAX_ROUNDS: usize = 1;
+/// Bounded few-round, few-TTL trace: exactly the C005 qualifying smoke shape
+/// (`trace 127.0.0.1 --max-hops 3` with default 3 attempts and the engine's
+/// ~10 s per-round budget). Every other builder field keeps the trippy
+/// default, identical to the C005 production adapter.
+const MAX_TTL: u8 = 3;
+const MAX_ROUNDS: usize = 3;
 
 /// Per-trace source-port identity (same base as the C005 adapter).
 const SRC_PORT: u16 = 43534;
@@ -49,9 +52,8 @@ fn main() {
         .first_ttl(1)
         .max_ttl(MAX_TTL)
         .max_rounds(Some(MAX_ROUNDS))
-        .min_round_duration(Duration::ZERO)
         .read_timeout(Duration::from_millis(100))
-        .max_round_duration(Duration::from_secs(5))
+        .max_round_duration(Duration::from_secs(10))
         .build()
         .expect("tracer build must succeed");
     println!("REPRO tracer_built");

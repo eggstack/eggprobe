@@ -79,31 +79,41 @@ if (-not (Test-Path $Binary)) {
 $abortRuns = 0
 $cleanRuns = 0
 $otherRuns = 0
+$timeoutRuns = 0
 for ($i = 1; $i -le $Repeats; $i++) {
     $tag = "{0}-{1:00}" -f $Variant, $i
     $outFile = Join-Path $LogsDir "$tag.stdout.log"
     $errFile = Join-Path $LogsDir "$tag.stderr.log"
     Write-Host "EVIDENCE run $i/$Repeats ..."
-    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = $Binary
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    $startInfo.UseShellExecute = $false
-    $startInfo.CreateNoWindow = $true
-    $child = [System.Diagnostics.Process]::Start($startInfo)
+    # Stream child output straight to files (never buffered in this
+    # controller) so partial markers survive even a hung or aborted child;
+    # the abort itself cannot kill this controller process.
+    # NOTE: no `-Wait` here: the bounded wait below enforces the per-run
+    # timeout, while `-Wait` would block unboundedly first.
+    $child = Start-Process -FilePath $Binary -NoNewWindow -PassThru `
+        -RedirectStandardOutput $outFile -RedirectStandardError $errFile
     # Per-run wall-clock bound on top of the trace's own bounded config, so
-    # a hung child fails this run instead of hanging the evidence job.
+    # a hung child is recorded and killed instead of hanging the job. The
+    # wait runs on the already-exited-or-running child handle; output is
+    # already streaming to disk, so no pipe deadlock is possible.
     if (-not $child.WaitForExit($TimeoutSeconds * 1000)) {
-        $child.Kill()
-        Write-Error "EVIDENCE run $i TIMEOUT after ${TimeoutSeconds}s"
-        exit 1
+        Stop-Process -InputObject $child -Force
+        "EVIDENCE TIMEOUT after ${TimeoutSeconds}s" | Out-File -FilePath $errFile -Append -Encoding utf8
+        Write-Host "EVIDENCE run $i TIMEOUT after ${TimeoutSeconds}s (recorded, continuing)"
+        $timeoutRuns++
+        continue
     }
     $exitCode = $child.ExitCode
-    # Synchronous reads are safe here: the repro prints only minimal bounded
-    # markers plus a short panic excerpt, far below pipe-buffer deadlock size.
-    $child.StandardOutput.ReadToEnd() | Out-File -FilePath $outFile -Encoding utf8
-    [string]$stderr = $child.StandardError.ReadToEnd()
-    $stderr | Out-File -FilePath $errFile -Encoding utf8
+    # Output already streamed to disk by the redirect above; read back only
+    # for signature classification.
+    [string]$stdout = ""
+    [string]$stderr = ""
+    if (Test-Path $outFile) {
+        $stdout = [string](Get-Content -Raw $outFile)
+    }
+    if (Test-Path $errFile) {
+        $stderr = [string](Get-Content -Raw $errFile)
+    }
     if ($exitCode -eq 2) {
         Write-Error "EVIDENCE run $i NOT_ELEVATED (exit 2). The evidence host lost elevation; stop and reassess."
         exit 2
@@ -118,7 +128,8 @@ for ($i = 1; $i -le $Repeats; $i++) {
         $abortRuns++
     }
     elseif ($exitCode -eq 0) {
-        Write-Host "EVIDENCE run $i exit=0 clean (completion or typed backend error)"
+        $result = ($stdout -split "`r?`n" | Select-String "REPRO RESULT" | Select-Object -First 1)
+        Write-Host "EVIDENCE run $i exit=0 clean ($result)"
         $cleanRuns++
     }
     else {
@@ -127,21 +138,21 @@ for ($i = 1; $i -le $Repeats; $i++) {
     }
 }
 
-Write-Host "EVIDENCE summary variant=$Variant abort_runs=$abortRuns clean_runs=$cleanRuns other_runs=$otherRuns repeats=$Repeats"
+Write-Host "EVIDENCE summary variant=$Variant abort_runs=$abortRuns clean_runs=$cleanRuns other_runs=$otherRuns timeout_runs=$timeoutRuns repeats=$Repeats"
 
 if ($Expect -eq "Abort") {
     if ($abortRuns -ge 1) {
         Write-Host "EVIDENCE PASS baseline demonstrated the defining abort signature ($abortRuns/$Repeats)"
         exit 0
     }
-    Write-Error "EVIDENCE FAIL baseline did not reproduce the defining abort signature (abort_runs=$abortRuns). Stop and reassess per C007 stop conditions."
+    Write-Error "EVIDENCE FAIL baseline did not reproduce the defining abort signature (abort_runs=$abortRuns clean_runs=$cleanRuns other_runs=$otherRuns timeout_runs=$timeoutRuns). Stop and reassess per C007 stop conditions."
     exit 1
 }
 else {
-    if ($abortRuns -eq 0 -and $otherRuns -eq 0 -and ($cleanRuns -eq $Repeats)) {
+    if ($abortRuns -eq 0 -and $otherRuns -eq 0 -and $timeoutRuns -eq 0 -and ($cleanRuns -eq $Repeats)) {
         Write-Host "EVIDENCE PASS candidate showed zero aborts over $Repeats bounded runs"
         exit 0
     }
-    Write-Error "EVIDENCE FAIL candidate aborted $abortRuns/$Repeats runs with $otherRuns unexpected exits. Classify as regression/distinct per C007 section 7."
+    Write-Error "EVIDENCE FAIL candidate: abort_runs=$abortRuns other_runs=$otherRuns timeout_runs=$timeoutRuns over $Repeats runs. Classify as regression/distinct per C007 section 7."
     exit 1
 }

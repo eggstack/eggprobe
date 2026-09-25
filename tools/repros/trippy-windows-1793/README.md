@@ -44,8 +44,11 @@ All three variants share the same trace configuration, which mirrors the
 C005 production builder (`crates/eggprobe-native/src/lib.rs::trace_path`):
 `Protocol::Udp`, `PrivilegeMode::Privileged`, `drop_privileges(false)`,
 `MultipathStrategy::Classic`, `PortDirection::FixedSrc(43534)`,
-`first_ttl(1)`, bounded `max_ttl`/`max_rounds`, `min_round_duration(ZERO)`.
-Each run performs one bounded single-round loopback trace and prints only
+`first_ttl(1)`, `max_ttl(3)`/`max_rounds(Some(3))`, `read_timeout(100ms)`,
+`max_round_duration(10s)`.
+Each run performs the same bounded 3-round, 3-TTL loopback trace as the C005
+qualifying smoke (`trace 127.0.0.1 --max-hops 3`, default 3 attempts, engine
+~10 s per-round budget) and prints only
 minimal `REPRO ...` markers (variant, config, elevation, result).
 
 Each variant commits its own `Cargo.lock` so the tested dependency identity
