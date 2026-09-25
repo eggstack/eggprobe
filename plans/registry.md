@@ -169,7 +169,7 @@ and remain historical evidence.
 | Native diagnostics corrective | C003 published ICMP backend adoption qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | C004 closed; still requires upstream acceptance/merge and a crates.io release containing tested commit `0407714` or an explicitly reconciled equivalent |
 | Native diagnostics | M003 ICMP echo | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | C004 + C003 closure; consume only the published qualified backend, never a production Git pin |
 | Native path/host diagnostics | M005 traceroute/path | closed | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | `tracert` 0.12.0 rejection retained; `trippy-core` 0.13.0 qualified (unprivileged UDP, silent-attempt truth, no reverse DNS, no `netdev` dup) and implemented at `2afc2e95223d785068af71e6129ae5d47372206a`; `plans/closure/native-path-host-diagnostics/005-status.md` |
-| Native diagnostics | M006 active PMTU | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | M004/M005 support seams remain open; trustworthy platform PMTU controls unqualified |
+| Native diagnostics | M006 active PMTU | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | M004/M005 seams closed; control survey at `696e7f5` finds no DF/PTB controls in Tokio, socket2 0.5/0.6, trippy 0.13.0, or nix 0.29, no unprivileged PTB channel on macOS/Windows, and no Linux/netns validation environment in reach — execution stops here for reassessment |
 
 ## Superseded planning
 
