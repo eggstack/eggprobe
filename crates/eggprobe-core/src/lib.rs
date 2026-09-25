@@ -21,7 +21,8 @@ pub use domain::plan::{
     AssertionKind, AssertionSpec, ExecutionPolicy, PlanValidationError, ProbePlan, ProbeSpec,
 };
 pub use domain::probe::{
-    DnsResolutionScope, ProbeEvidence, ProbeKind, ProbeResult, ProbeStatus, UdpOutcome,
+    DnsResolutionScope, NativeAttemptOutcome, ProbeEvidence, ProbeKind, ProbeResult, ProbeStatus,
+    TraceTermination, UdpOutcome,
 };
 pub use domain::report::{ProbeReport, ReportStatus, RouteSummary, TargetSummary, ToolProvenance};
 pub use domain::route::{EggressRoute, RouteSpec};

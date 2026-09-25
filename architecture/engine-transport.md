@@ -28,6 +28,14 @@ Shared resolution `addresses()` → `resolve_addresses()` (`engine.rs:185-191,83
 * Completed observations (`ProbeStatus::Ok` + `UdpEvidence`): `Sent` (no reply awaited), `Response` (source, byte count, sample capped at `MAX_UDP_RESPONSE_SAMPLE_BYTES` = 1400, present only when a reply was awaited), `Timeout` (silence), `Unreachable` (`ConnectionRefused/HostUnreachable/NetworkUnreachable` surfaced on the connected socket). Only bind/connect/send failures become `Failed` probe errors. No retries; cancellation drops the socket with no background task.
 * Request payload bytes are input-only and never serialized into reports. CLI: `eggprobe udp <target> --port <p> [--payload <text>] [--receive]` (`eggprobe-cli/src/lib.rs`, `UdpArgs`/`plan_for_udp`); `--port` required, payload capped at 1200.
 
+## 2c. Direct traceroute (`eggprobe-native::trace_path`, `ProbeEngine::trace`)
+
+* Backend: `trippy-core =0.13.0` (exact pin), unprivileged UDP, classic single-flow strategy, fixed per-trace source port (atomic window `43534..44534`, isolating concurrent traces) with per-probe destination ports. No `netdev` duplication, no reverse-DNS crate in its tree. ICMP echo mode stays reserved for the M003 backend.
+* `trace()` (`engine.rs`, `ProbeEngine::trace`): direct-only (Eggress → `Unsupported/HopProbe`); first-address resolution under `TargetPolicy`; same destination-class rejection as UDP (`Policy/HopProbe`); remaining outer budget divided across rounds (`max_round_duration = per_round − 100ms` margin) so silent traces finish inside the budget and report `MaxHops`; `read_timeout` is fixed at 100ms because it only sets backend loop-wakeup granularity, never reply cutoffs; engine timeout is a defensive backstop.
+* `trace_path()` (`eggprobe-native/src/lib.rs`): blocking backend on `spawn_blocking`, rounds collected via `run_with`; bounded `timeout` keeps partial rounds with `completed: false` instead of failing. Build/run errors normalize to `PermissionDenied` (privilege) or `Io` with fixed messages — dependency `Display` (addresses, interfaces) never forwarded.
+* `observe_round`/`summarize_trace` (pure, scripted-test-covered): silent `Awaited` probes → `TimedOut` attempts (evidence, not failure); target replies → `DestinationReached`; router TTL-expired → `TimeExceeded`; router unreachable → `DestinationUnreachable`; unsent (`NotSent`/`Skipped`) probes are not attempts. Termination: `Deadline` (incomplete) > `DestinationReached` > `Unreachable` > `MaxHops`. Hops capped at `max_hops`, TTL-ordered.
+* CLI: `eggprobe trace <target> [--max-hops 1-64] [--attempts 1-5]` (`TraceArgs`/`plan_for_trace`); no port flag exists (ports are backend-internal and invisible in reports).
+
 ## 3. Eggfetch-backed HTTP
 
 Deps (`eggprobe-core/Cargo.toml:12-14`): `eggfetch-core 0.2.0` (`advanced-routing,standard-http1,standard-http2,tls-rustls`), no QUIC/H3; `eggress-core`/`eggress-embed` 1.0.8; `tokio 1.47`, `rustls 0.23`, `tokio-rustls 0.26`.

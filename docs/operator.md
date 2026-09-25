@@ -23,6 +23,7 @@ eggprobe tls example.com --port 443 --json
 eggprobe http https://example.com/ --json
 eggprobe route example.com --json
 eggprobe udp example.com --port 53 --json
+eggprobe trace example.com --json
 eggprobe check example.com --port 443 --url https://example.com/ --json
 ```
 
@@ -86,6 +87,32 @@ socket and reports local transmission separately from reply observation:
   (`--via`) UDP plans;
 - request payload bytes are input-only and never reproduced in reports.
 
+## Direct traceroute evidence
+
+`eggprobe trace <target> [--max-hops <1-64>] [--attempts <1-5>] --json`
+traces a bounded direct path with unprivileged UDP probes (classic,
+single-flow strategy; no raw sockets, no subprocess, no terminal parsing):
+
+- one probe per TTL per round, at most 64 hops and 5 attempts per hop;
+- every sent probe yields ordered per-attempt evidence: responder address,
+  round-trip time, and outcome (`destination_reached`, `time_exceeded`,
+  `reply`, `destination_unreachable`, or `timed_out`);
+- silent hops are evidence (`timed_out` attempts), not engine failures;
+- termination is explicit: `destination_reached`, `unreachable`,
+  `max_hops`, `deadline` (bounded wait expired with rounds pending, keeping
+  completed rounds), `permission_denied`, or `unsupported`;
+- reaching the target and executing the trace are separate: a trace that
+  runs to the hop bound without the target answering completes with
+  `max_hops`;
+- the remaining outer deadline is divided across rounds, so the backend
+  cannot outlive the plan by design; per-trace source ports keep concurrent
+  traces isolated;
+- no reverse-DNS lookup is performed; hop identity is the responder
+  address only;
+- unspecified, broadcast, multicast, and link-local destinations are
+  rejected by policy, as are Eggress-routed (`--via`) trace plans. ICMP
+  echo mode stays reserved until the M003 backend qualifies.
+
 ## Troubleshooting
 
 - DNS probe answers identify the client/system resolver scope and do not claim
@@ -133,7 +160,8 @@ qualifies its backend:
 - direct UDP service checks — `M004`, implemented (`eggprobe udp`,
   connected sockets, bounded payload/reply, transmit/reply/timeout/
   unreachable semantics);
-- traceroute / path tracing — `M005`, blocked on a truthful backend;
+- traceroute / path tracing — `M005`, implemented (`eggprobe trace`,
+  unprivileged UDP, ordered per-attempt evidence, explicit termination);
 - active path-MTU discovery — `M006`, blocked on test seams and
   trustworthy PMTU feedback.
 

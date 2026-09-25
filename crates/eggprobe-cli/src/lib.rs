@@ -34,6 +34,7 @@ pub enum Command {
     Tls(TlsArgs),
     Http(HttpArgs),
     Udp(UdpArgs),
+    Trace(TraceArgs),
     Proxy(ProxyArgs),
     Check(CheckArgs),
     Run(RunArgs),
@@ -89,6 +90,24 @@ pub struct UdpArgs {
     /// Wait for one bounded reply before completing.
     #[arg(long)]
     pub receive: bool,
+}
+/// Direct traceroute controls. No port applies: the backend traces the
+/// target address with TTL-limited UDP probes.
+#[derive(Clone, Debug, Args)]
+pub struct TraceArgs {
+    pub target: String,
+    #[arg(long)]
+    pub via: Option<String>,
+    #[arg(long, default_value_t = 30)]
+    pub max_hops: u8,
+    #[arg(long, default_value_t = 3)]
+    pub attempts: u8,
+    #[arg(long, default_value_t = 30_000)]
+    pub timeout_ms: u64,
+    #[arg(long)]
+    pub strict_target: bool,
+    #[arg(long)]
+    pub json: bool,
 }
 /// Explicit proxy route controls.
 #[derive(Clone, Debug, Args)]
@@ -232,6 +251,9 @@ pub async fn execute(cli: Cli) -> Result<(i32, String), CliError> {
                 args.primitive.strict_target,
             )
             .await
+        }
+        Command::Trace(args) => {
+            run_single(plan_for_trace(&args)?, args.json, args.strict_target).await
         }
         Command::Proxy(args) => run_single(plan_for_proxy(&args)?, args.json, false).await,
         Command::Check(args) => {
@@ -515,6 +537,18 @@ fn plan_for_udp(args: &UdpArgs) -> Result<ProbePlan, String> {
             receive: args.receive,
         }],
         args.primitive.timeout_ms,
+        vec![],
+    ))
+}
+fn plan_for_trace(args: &TraceArgs) -> Result<ProbePlan, String> {
+    Ok(base(
+        target(&args.target, None)?,
+        route(args.via.as_deref())?,
+        vec![ProbeSpec::Trace {
+            max_hops: args.max_hops,
+            attempts_per_hop: args.attempts,
+        }],
+        args.timeout_ms,
         vec![],
     ))
 }

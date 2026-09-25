@@ -274,6 +274,324 @@ pub async fn udp_exchange(
     }
 }
 
+/// Outcome observed for one trace probe sent at one TTL.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TraceProbeOutcome {
+    /// The destination host answered at this TTL.
+    DestinationReached,
+    /// An intermediate router reported TTL expiration.
+    TimeExceeded,
+    /// A non-ICMP reply was observed.
+    Reply,
+    /// A router reported the destination unreachable.
+    DestinationUnreachable,
+    /// The probe was sent but no usable reply arrived.
+    TimedOut,
+}
+
+/// Backend-neutral observation of one trace probe.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct TraceProbeObservation {
+    /// TTL the probe was sent with.
+    pub ttl: u8,
+    /// Address that answered, when one did.
+    pub responder: Option<IpAddr>,
+    /// Round-trip microseconds, when a reply arrived.
+    pub rtt_micros: Option<u64>,
+    /// Stable outcome.
+    pub outcome: TraceProbeOutcome,
+}
+
+/// How one trace round completed.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TraceRoundReason {
+    /// The destination answered during the round.
+    TargetFound,
+    /// The round exhausted its bounded duration.
+    TimeLimit,
+}
+
+/// Backend-neutral observation of one trace round.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraceRoundObservation {
+    /// How the round completed.
+    pub reason: TraceRoundReason,
+    /// Probe observations in send order.
+    pub probes: Vec<TraceProbeObservation>,
+}
+
+/// Backend-neutral result of one bounded trace.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraceReport {
+    /// Completed rounds in execution order; short when the timeout fired.
+    pub rounds: Vec<TraceRoundObservation>,
+    /// Whether every requested round completed.
+    pub completed: bool,
+}
+
+/// Attempt evidence for one TTL.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraceAttemptSummary {
+    /// Address that answered, when one did.
+    pub responder: Option<IpAddr>,
+    /// Round-trip microseconds, when observed.
+    pub rtt_micros: Option<u64>,
+    /// Stable outcome.
+    pub outcome: TraceProbeOutcome,
+}
+
+/// Ordered evidence for one TTL.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraceHopSummary {
+    /// TTL/hop index.
+    pub hop: u8,
+    /// Attempts in round order.
+    pub attempts: Vec<TraceAttemptSummary>,
+}
+
+/// How a bounded trace terminated.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TraceTerminationSummary {
+    /// The destination answered.
+    DestinationReached,
+    /// A router reported the destination unreachable.
+    Unreachable,
+    /// Rounds completed without the destination answering.
+    MaxHops,
+    /// The bounded wait expired with rounds still pending.
+    Deadline,
+}
+
+/// Ordered hops plus termination derived from a trace report.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TraceSummary {
+    /// Hops ordered by TTL.
+    pub hops: Vec<TraceHopSummary>,
+    /// Termination reason.
+    pub termination: TraceTerminationSummary,
+}
+
+/// Trace one bounded direct path with unprivileged UDP probes.
+///
+/// Each round sends one probe per TTL from 1 through `max_hops` using the
+/// classic (non-Paris) strategy and a fixed traditional destination port.
+/// Silent TTLs are preserved as [`TraceProbeOutcome::TimedOut`] observations,
+/// never as engine failures. The blocking backend runs on a dedicated thread;
+/// `timeout` bounds the wait, and expiry keeps the rounds completed so far
+/// with `completed` set to false. No reverse-DNS lookup is performed.
+///
+/// # Errors
+///
+/// Returns a bounded native error when the tracer cannot be built or the
+/// trace fails locally. Permission denial is reported explicitly.
+///
+/// # Panics
+///
+/// Panics only if the internal round-collection lock is poisoned, which
+/// cannot happen because the lock is held across non-panicking pushes.
+pub async fn trace_path(
+    target: IpAddr,
+    max_hops: u8,
+    rounds: u8,
+    read_timeout: std::time::Duration,
+    max_round_duration: std::time::Duration,
+    timeout: std::time::Duration,
+) -> Result<TraceReport, NativeError> {
+    let rounds = usize::from(rounds.max(1));
+    let tracer = trippy_core::Builder::new(target)
+        .privilege_mode(trippy_core::PrivilegeMode::Unprivileged)
+        .protocol(trippy_core::Protocol::Udp)
+        .multipath_strategy(trippy_core::MultipathStrategy::Classic)
+        // Classic varies the destination port per probe, so the fixed
+        // source port is the per-tracer identity and must be unique.
+        .port_direction(trippy_core::PortDirection::FixedSrc(next_trace_src_port()))
+        .first_ttl(1)
+        .max_ttl(max_hops.max(1))
+        .max_rounds(Some(rounds))
+        .min_round_duration(std::time::Duration::ZERO)
+        .read_timeout(read_timeout)
+        .max_round_duration(max_round_duration)
+        .build()
+        .map_err(|error| map_trace_error(&error))?;
+    let collected = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let worker_collected = std::sync::Arc::clone(&collected);
+    let worker = tokio::task::spawn_blocking(move || {
+        tracer.run_with(|round| {
+            worker_collected
+                .lock()
+                .expect("trace rounds are pushed under a short-lived lock")
+                .push(observe_round(target, round));
+        })
+    });
+    if let Ok(joined) = tokio::time::timeout(timeout, worker).await {
+        joined
+            .map_err(|_| NativeError {
+                kind: NativeErrorKind::Io,
+            })?
+            .map_err(|error| map_trace_error(&error))?;
+        let rounds = std::mem::take(
+            &mut *collected
+                .lock()
+                .expect("trace rounds are taken under a short-lived lock"),
+        );
+        Ok(TraceReport {
+            rounds,
+            completed: true,
+        })
+    } else {
+        let rounds = std::mem::take(
+            &mut *collected
+                .lock()
+                .expect("trace rounds are taken under a short-lived lock"),
+        );
+        Ok(TraceReport {
+            rounds,
+            completed: false,
+        })
+    }
+}
+
+/// Derive ordered hop evidence and termination from a trace report.
+///
+/// Probes for TTLs outside `1..=max_hops` are ignored defensively. An
+/// incomplete report (the bounded wait expired) terminates as
+/// [`TraceTerminationSummary::Deadline`] while retaining completed rounds.
+#[must_use]
+pub fn summarize_trace(target: IpAddr, max_hops: u8, report: &TraceReport) -> TraceSummary {
+    let mut hops: Vec<TraceHopSummary> = Vec::new();
+    for round in &report.rounds {
+        for probe in &round.probes {
+            if probe.ttl == 0 || probe.ttl > max_hops {
+                continue;
+            }
+            let attempt = TraceAttemptSummary {
+                responder: probe.responder,
+                rtt_micros: probe.rtt_micros,
+                outcome: probe.outcome,
+            };
+            match hops.iter_mut().find(|hop| hop.hop == probe.ttl) {
+                Some(hop) => hop.attempts.push(attempt),
+                None => hops.push(TraceHopSummary {
+                    hop: probe.ttl,
+                    attempts: vec![attempt],
+                }),
+            }
+        }
+    }
+    hops.sort_by_key(|hop| hop.hop);
+    let reached = report
+        .rounds
+        .iter()
+        .flat_map(|round| &round.probes)
+        .any(|probe| {
+            probe.outcome == TraceProbeOutcome::DestinationReached
+                && probe.responder == Some(target)
+        });
+    let unreachable = report
+        .rounds
+        .iter()
+        .flat_map(|round| &round.probes)
+        .any(|probe| probe.outcome == TraceProbeOutcome::DestinationUnreachable);
+    let termination = if !report.completed {
+        TraceTerminationSummary::Deadline
+    } else if reached {
+        TraceTerminationSummary::DestinationReached
+    } else if unreachable {
+        TraceTerminationSummary::Unreachable
+    } else {
+        TraceTerminationSummary::MaxHops
+    };
+    TraceSummary { hops, termination }
+}
+
+fn map_trace_error(error: &trippy_core::Error) -> NativeError {
+    let kind = match error {
+        trippy_core::Error::PrivilegeError(_) => NativeErrorKind::PermissionDenied,
+        _ => NativeErrorKind::Io,
+    };
+    NativeError { kind }
+}
+
+/// Base source port; each trace takes the next port in a small window so
+/// concurrent traces never share the local bind. Kept clear of the
+/// traditional destination range and the well-known range.
+const TRACE_SRC_PORT_BASE: u16 = 43534;
+/// Width of the per-trace source port window.
+const TRACE_SRC_PORT_WINDOW: u16 = 1000;
+
+static NEXT_TRACE_SRC_PORT: std::sync::atomic::AtomicU16 = std::sync::atomic::AtomicU16::new(0);
+
+fn next_trace_src_port() -> trippy_core::Port {
+    let offset = NEXT_TRACE_SRC_PORT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+        % TRACE_SRC_PORT_WINDOW;
+    trippy_core::Port(TRACE_SRC_PORT_BASE + offset)
+}
+
+fn observe_round(target: IpAddr, round: &trippy_core::Round<'_>) -> TraceRoundObservation {
+    TraceRoundObservation {
+        reason: match round.reason {
+            trippy_core::CompletionReason::TargetFound => TraceRoundReason::TargetFound,
+            trippy_core::CompletionReason::RoundTimeLimitExceeded => TraceRoundReason::TimeLimit,
+        },
+        probes: round
+            .probes
+            .iter()
+            .filter_map(|probe| observe_probe(target, probe))
+            .collect(),
+    }
+}
+
+fn observe_probe(
+    target: IpAddr,
+    probe: &trippy_core::ProbeStatus,
+) -> Option<TraceProbeObservation> {
+    match probe {
+        trippy_core::ProbeStatus::Complete(complete) => {
+            let rtt_micros = complete
+                .received
+                .duration_since(complete.sent)
+                .ok()
+                .map(|span| {
+                    u64::try_from(span.as_micros().min(u128::from(u64::MAX))).unwrap_or(u64::MAX)
+                });
+            let outcome = if complete.host == target {
+                TraceProbeOutcome::DestinationReached
+            } else {
+                match complete.icmp_packet_type {
+                    trippy_core::IcmpPacketType::TimeExceeded(_) => TraceProbeOutcome::TimeExceeded,
+                    trippy_core::IcmpPacketType::EchoReply(_)
+                    | trippy_core::IcmpPacketType::NotApplicable => TraceProbeOutcome::Reply,
+                    trippy_core::IcmpPacketType::Unreachable(_) => {
+                        TraceProbeOutcome::DestinationUnreachable
+                    }
+                }
+            };
+            Some(TraceProbeObservation {
+                ttl: complete.ttl.0,
+                responder: Some(complete.host),
+                rtt_micros,
+                outcome,
+            })
+        }
+        trippy_core::ProbeStatus::Awaited(awaited) => Some(TraceProbeObservation {
+            ttl: awaited.ttl.0,
+            responder: None,
+            rtt_micros: None,
+            outcome: TraceProbeOutcome::TimedOut,
+        }),
+        // A failed probe produced no usable reply; the attempt is preserved
+        // as silence rather than failing the whole trace.
+        trippy_core::ProbeStatus::Failed(failed) => Some(TraceProbeObservation {
+            ttl: failed.ttl.0,
+            responder: None,
+            rtt_micros: None,
+            outcome: TraceProbeOutcome::TimedOut,
+        }),
+        // Probes that were never transmitted are not attempts.
+        trippy_core::ProbeStatus::NotSent | trippy_core::ProbeStatus::Skipped => None,
+    }
+}
+
 /// Inspect local interface and route metadata for one resolved destination.
 ///
 /// # Errors
@@ -496,6 +814,421 @@ mod tests {
         let payload = vec![0_u8; MAX_UDP_PAYLOAD_BYTES + 1];
         let result = udp_exchange(target, &payload, false, std::time::Duration::from_secs(1)).await;
         assert!(result.is_err());
+    }
+
+    fn silent_probe(ttl: u8) -> trippy_core::ProbeStatus {
+        trippy_core::ProbeStatus::Awaited(trippy_core::Probe {
+            sequence: trippy_core::Sequence(2),
+            identifier: trippy_core::TraceId(0),
+            src_port: trippy_core::Port(33434),
+            dest_port: trippy_core::Port(33434),
+            ttl: trippy_core::TimeToLive(ttl),
+            round: trippy_core::RoundId(0),
+            sent: std::time::SystemTime::UNIX_EPOCH,
+            flags: trippy_core::Flags::empty(),
+        })
+    }
+
+    fn observation(
+        ttl: u8,
+        responder: Option<IpAddr>,
+        rtt_micros: Option<u64>,
+        outcome: TraceProbeOutcome,
+    ) -> TraceProbeObservation {
+        TraceProbeObservation {
+            ttl,
+            responder,
+            rtt_micros,
+            outcome,
+        }
+    }
+
+    /// Collect raw backend probe states for one loopback round. The backend
+    /// keeps `IcmpPacketCode`/`ProbeFailed` out of its public exports, so
+    /// extraction coverage for reply-bearing probes comes from live values
+    /// (possibly with the responder rewritten) rather than literals.
+    fn live_probe_states(target: IpAddr) -> Vec<trippy_core::ProbeStatus> {
+        let collected = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let worker_collected = std::sync::Arc::clone(&collected);
+        let tracer = trippy_core::Builder::new(target)
+            .privilege_mode(trippy_core::PrivilegeMode::Unprivileged)
+            .protocol(trippy_core::Protocol::Udp)
+            .multipath_strategy(trippy_core::MultipathStrategy::Classic)
+            .port_direction(trippy_core::PortDirection::FixedSrc(next_trace_src_port()))
+            .first_ttl(1)
+            .max_ttl(1)
+            .max_rounds(Some(1))
+            .min_round_duration(std::time::Duration::ZERO)
+            .read_timeout(std::time::Duration::from_millis(300))
+            .max_round_duration(std::time::Duration::from_secs(3))
+            .build()
+            .unwrap();
+        tracer
+            .run_with(|round| {
+                worker_collected
+                    .lock()
+                    .unwrap()
+                    .extend(round.probes.iter().cloned());
+            })
+            .unwrap();
+        let states = collected.lock().unwrap().clone();
+        states
+    }
+
+    #[test]
+    fn trace_summary_preserves_ordered_hops_across_rounds() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let router: IpAddr = "192.168.182.1".parse().unwrap();
+        let report = TraceReport {
+            rounds: vec![
+                TraceRoundObservation {
+                    reason: TraceRoundReason::TimeLimit,
+                    probes: vec![
+                        TraceProbeObservation {
+                            ttl: 1,
+                            responder: Some(router),
+                            rtt_micros: Some(5000),
+                            outcome: TraceProbeOutcome::TimeExceeded,
+                        },
+                        TraceProbeObservation {
+                            ttl: 2,
+                            responder: Some(target),
+                            rtt_micros: Some(150),
+                            outcome: TraceProbeOutcome::DestinationReached,
+                        },
+                    ],
+                },
+                TraceRoundObservation {
+                    reason: TraceRoundReason::TargetFound,
+                    probes: vec![
+                        TraceProbeObservation {
+                            ttl: 1,
+                            responder: Some(router),
+                            rtt_micros: Some(5100),
+                            outcome: TraceProbeOutcome::TimeExceeded,
+                        },
+                        TraceProbeObservation {
+                            ttl: 2,
+                            responder: Some(target),
+                            rtt_micros: Some(140),
+                            outcome: TraceProbeOutcome::DestinationReached,
+                        },
+                    ],
+                },
+            ],
+            completed: true,
+        };
+        let summary = summarize_trace(target, 30, &report);
+        assert_eq!(
+            summary.termination,
+            TraceTerminationSummary::DestinationReached
+        );
+        assert_eq!(summary.hops.len(), 2);
+        assert_eq!(summary.hops[0].hop, 1);
+        assert_eq!(summary.hops[1].hop, 2);
+        assert_eq!(summary.hops[0].attempts.len(), 2);
+        assert_eq!(summary.hops[0].attempts[0].rtt_micros, Some(5000));
+        assert_eq!(summary.hops[1].attempts[1].responder, Some(target));
+    }
+
+    #[test]
+    fn trace_summary_keeps_silent_intermediate_hop_as_evidence() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let mut reached = live_probe_states(target);
+        assert!(!reached.is_empty());
+        let trippy_core::ProbeStatus::Complete(ref mut complete) = reached[0] else {
+            panic!("loopback must answer");
+        };
+        complete.ttl = trippy_core::TimeToLive(3);
+        let probes = vec![
+            silent_probe(2),
+            silent_probe(2),
+            trippy_core::ProbeStatus::Complete(complete.clone()),
+        ];
+        let round = trippy_core::Round::new(
+            &probes,
+            trippy_core::TimeToLive(3),
+            trippy_core::CompletionReason::TargetFound,
+        );
+        let observed = observe_round(target, &round);
+        assert_eq!(observed.reason, TraceRoundReason::TargetFound);
+        assert_eq!(observed.probes.len(), 3);
+        assert_eq!(observed.probes[0].outcome, TraceProbeOutcome::TimedOut);
+        assert_eq!(observed.probes[0].responder, None);
+        assert_eq!(observed.probes[0].rtt_micros, None);
+        assert_eq!(
+            observed.probes[2].outcome,
+            TraceProbeOutcome::DestinationReached
+        );
+        assert!(observed.probes[2].rtt_micros.is_some());
+        let report = TraceReport {
+            rounds: vec![TraceRoundObservation {
+                reason: observed.reason,
+                probes: observed.probes,
+            }],
+            completed: true,
+        };
+        let summary = summarize_trace(target, 30, &report);
+        assert_eq!(summary.hops.len(), 2);
+        assert_eq!(summary.hops[0].hop, 2);
+        assert_eq!(summary.hops[0].attempts.len(), 2);
+        assert_eq!(
+            summary.hops[0].attempts[0].outcome,
+            TraceProbeOutcome::TimedOut
+        );
+        assert_eq!(summary.hops[1].hop, 3);
+        assert_eq!(
+            summary.termination,
+            TraceTerminationSummary::DestinationReached
+        );
+    }
+
+    #[test]
+    fn trace_summary_reports_unreachable_path_explicitly() {
+        let target: IpAddr = "203.0.113.9".parse().unwrap();
+        let router: IpAddr = "192.168.182.1".parse().unwrap();
+        let mut states = live_probe_states("127.0.0.1".parse().unwrap());
+        assert!(!states.is_empty());
+        let trippy_core::ProbeStatus::Complete(ref mut complete) = states[0] else {
+            panic!("loopback must answer");
+        };
+        // A reply from any non-target address with unreachable semantics is
+        // router-reported unreachability, not a reached destination.
+        complete.host = router;
+        complete.ttl = trippy_core::TimeToLive(2);
+        let observed = observe_probe(
+            target,
+            &trippy_core::ProbeStatus::Complete(complete.clone()),
+        );
+        let unreachable_observation = observed.unwrap();
+        assert_eq!(
+            unreachable_observation.outcome,
+            TraceProbeOutcome::DestinationUnreachable
+        );
+        assert_eq!(unreachable_observation.responder, Some(router));
+        let report = TraceReport {
+            rounds: vec![TraceRoundObservation {
+                reason: TraceRoundReason::TimeLimit,
+                probes: vec![
+                    observation(1, Some(router), Some(5000), TraceProbeOutcome::TimeExceeded),
+                    unreachable_observation,
+                ],
+            }],
+            completed: true,
+        };
+        let summary = summarize_trace(target, 30, &report);
+        assert_eq!(summary.termination, TraceTerminationSummary::Unreachable);
+        assert_eq!(
+            summary.hops[1].attempts[0].outcome,
+            TraceProbeOutcome::DestinationUnreachable
+        );
+    }
+
+    #[test]
+    fn trace_summary_terminates_at_max_hops_without_target() {
+        let target: IpAddr = "203.0.113.9".parse().unwrap();
+        let router: IpAddr = "192.168.182.1".parse().unwrap();
+        let report = TraceReport {
+            rounds: vec![TraceRoundObservation {
+                reason: TraceRoundReason::TimeLimit,
+                probes: vec![
+                    observation(1, Some(router), Some(5000), TraceProbeOutcome::TimeExceeded),
+                    observation(2, Some(router), Some(5100), TraceProbeOutcome::TimeExceeded),
+                ],
+            }],
+            completed: true,
+        };
+        let summary = summarize_trace(target, 2, &report);
+        assert_eq!(summary.termination, TraceTerminationSummary::MaxHops);
+        assert_eq!(summary.hops.len(), 2);
+    }
+
+    #[test]
+    fn trace_summary_keeps_partial_rounds_on_deadline() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let report = TraceReport {
+            rounds: vec![TraceRoundObservation {
+                reason: TraceRoundReason::TimeLimit,
+                probes: vec![TraceProbeObservation {
+                    ttl: 1,
+                    responder: None,
+                    rtt_micros: None,
+                    outcome: TraceProbeOutcome::TimedOut,
+                }],
+            }],
+            completed: false,
+        };
+        let summary = summarize_trace(target, 30, &report);
+        assert_eq!(summary.termination, TraceTerminationSummary::Deadline);
+        assert_eq!(summary.hops.len(), 1);
+    }
+
+    #[test]
+    fn trace_summary_ignores_out_of_range_ttl_defensively() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let report = TraceReport {
+            rounds: vec![TraceRoundObservation {
+                reason: TraceRoundReason::TimeLimit,
+                probes: vec![
+                    TraceProbeObservation {
+                        ttl: 0,
+                        responder: None,
+                        rtt_micros: None,
+                        outcome: TraceProbeOutcome::TimedOut,
+                    },
+                    TraceProbeObservation {
+                        ttl: 65,
+                        responder: None,
+                        rtt_micros: None,
+                        outcome: TraceProbeOutcome::TimedOut,
+                    },
+                    TraceProbeObservation {
+                        ttl: 1,
+                        responder: Some(target),
+                        rtt_micros: Some(100),
+                        outcome: TraceProbeOutcome::DestinationReached,
+                    },
+                ],
+            }],
+            completed: true,
+        };
+        let summary = summarize_trace(target, 64, &report);
+        assert_eq!(summary.hops.len(), 1);
+        assert_eq!(summary.hops[0].hop, 1);
+    }
+
+    #[test]
+    fn trace_probe_maps_live_reply_and_skips_unsent_probes() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let states = live_probe_states(target);
+        assert!(!states.is_empty());
+        let observed = observe_probe(target, &states[0]).unwrap();
+        assert_eq!(observed.outcome, TraceProbeOutcome::DestinationReached);
+        assert_eq!(observed.responder, Some(target));
+        assert!(observed.rtt_micros.is_some());
+        let probes = vec![
+            states[0].clone(),
+            trippy_core::ProbeStatus::NotSent,
+            trippy_core::ProbeStatus::Skipped,
+        ];
+        let round = trippy_core::Round::new(
+            &probes,
+            trippy_core::TimeToLive(1),
+            trippy_core::CompletionReason::TargetFound,
+        );
+        let observed = observe_round(target, &round);
+        assert_eq!(observed.probes.len(), 1);
+    }
+
+    #[test]
+    fn trace_probe_tolerates_clock_skew_without_rtt() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let mut states = live_probe_states(target);
+        assert!(!states.is_empty());
+        let trippy_core::ProbeStatus::Complete(ref mut complete) = states[0] else {
+            panic!("loopback must answer");
+        };
+        complete.received = std::time::SystemTime::UNIX_EPOCH;
+        complete.sent = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1);
+        let observed = observe_probe(
+            target,
+            &trippy_core::ProbeStatus::Complete(complete.clone()),
+        )
+        .unwrap();
+        assert_eq!(observed.rtt_micros, None);
+        assert_eq!(observed.outcome, TraceProbeOutcome::DestinationReached);
+    }
+
+    #[test]
+    fn trace_backend_errors_map_to_bounded_kinds() {
+        // `PrivilegeError` carries a platform-specific inner error with no
+        // public constructor on this host, so only the fallback arm is
+        // directly constructible; the privilege arm is review-covered.
+        let local = map_trace_error(&trippy_core::Error::Other("backend failed".into()));
+        assert_eq!(local.kind, NativeErrorKind::Io);
+    }
+
+    #[test]
+    fn trace_path_rejects_unknown_interface_as_local_failure() {
+        let tracer = trippy_core::Builder::new("127.0.0.1".parse().unwrap())
+            .privilege_mode(trippy_core::PrivilegeMode::Unprivileged)
+            .protocol(trippy_core::Protocol::Udp)
+            .interface(Some("eggprobe-nonexistent-interface"))
+            .max_rounds(Some(1))
+            .build();
+        match tracer {
+            Ok(tracer) => {
+                let run = tracer.run();
+                assert!(run.is_err(), "bogus interface must fail the trace");
+                assert_eq!(map_trace_error(&run.unwrap_err()).kind, NativeErrorKind::Io);
+            }
+            Err(error) => assert_eq!(
+                map_trace_error(&error).kind,
+                NativeErrorKind::Io,
+                "bogus interface must normalize to a bounded local failure"
+            ),
+        }
+    }
+
+    #[tokio::test]
+    async fn trace_path_reaches_loopback_without_privilege() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let report = trace_path(
+            target,
+            3,
+            1,
+            std::time::Duration::from_millis(300),
+            std::time::Duration::from_secs(3),
+            std::time::Duration::from_secs(10),
+        )
+        .await
+        .unwrap();
+        assert!(report.completed);
+        let summary = summarize_trace(target, 3, &report);
+        assert_eq!(
+            summary.termination,
+            TraceTerminationSummary::DestinationReached
+        );
+        assert!(!summary.hops.is_empty());
+        assert_eq!(summary.hops[0].hop, 1);
+        assert_eq!(summary.hops[0].attempts[0].responder, Some(target));
+    }
+
+    #[tokio::test]
+    async fn trace_path_reaches_ipv6_loopback_without_privilege() {
+        let target: IpAddr = "::1".parse().unwrap();
+        let report = trace_path(
+            target,
+            3,
+            1,
+            std::time::Duration::from_millis(300),
+            std::time::Duration::from_secs(3),
+            std::time::Duration::from_secs(10),
+        )
+        .await
+        .unwrap();
+        assert!(report.completed);
+        let summary = summarize_trace(target, 3, &report);
+        assert_eq!(
+            summary.termination,
+            TraceTerminationSummary::DestinationReached
+        );
+    }
+
+    #[tokio::test]
+    async fn trace_path_reports_partial_report_when_bounded_wait_expires() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        let report = trace_path(
+            target,
+            3,
+            1,
+            std::time::Duration::from_millis(300),
+            std::time::Duration::from_secs(3),
+            std::time::Duration::ZERO,
+        )
+        .await
+        .unwrap();
+        assert!(!report.completed);
     }
 }
 

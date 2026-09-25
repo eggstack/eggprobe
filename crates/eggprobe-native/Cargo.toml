@@ -12,6 +12,7 @@ homepage.workspace = true
 netdev = { version = "0.46", default-features = false }
 netroute = "0.4"
 tokio.workspace = true
+trippy-core = "=0.13.0"
 
 [lints]
 workspace = true

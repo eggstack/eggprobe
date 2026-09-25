@@ -152,7 +152,14 @@ impl ProbeEngine {
                 payload,
                 receive,
             } => self.udp(plan, *port, payload, *receive, deadline_at).await,
-            ProbeSpec::IcmpEcho { .. } | ProbeSpec::Trace { .. } | ProbeSpec::PathMtu { .. } => {
+            ProbeSpec::Trace {
+                max_hops,
+                attempts_per_hop,
+            } => {
+                self.trace(plan, *max_hops, *attempts_per_hop, deadline_at)
+                    .await
+            }
+            ProbeSpec::IcmpEcho { .. } | ProbeSpec::PathMtu { .. } => {
                 return ProbeResult {
                     kind,
                     status: ProbeStatus::Unsupported,
@@ -393,6 +400,106 @@ impl ProbeEngine {
             response_source: observed.response_source.map(|address| address.to_string()),
             response_bytes: observed.response_bytes,
             response_sample: observed.response_sample,
+        }))
+    }
+
+    async fn trace(
+        &self,
+        plan: &ProbePlan,
+        max_hops: u8,
+        attempts_per_hop: u8,
+        deadline_at: tokio::time::Instant,
+    ) -> Result<ProbeEvidence, DiagnosticError> {
+        if !matches!(plan.route, RouteSpec::Direct) {
+            return Err(simple_error(
+                DiagnosticErrorKind::Unsupported,
+                DiagnosticStage::HopProbe,
+                "native diagnostics require the direct route",
+            ));
+        }
+        let destination = self
+            .addresses(&plan.target.host, plan.target.port.unwrap_or(0))
+            .await?
+            .into_iter()
+            .next()
+            .expect("address resolver returns a non-empty list")
+            .ip();
+        if destination.is_unspecified()
+            || destination.is_multicast()
+            || matches!(destination, IpAddr::V4(address) if address == std::net::Ipv4Addr::BROADCAST)
+            || matches!(destination, IpAddr::V4(address) if address.is_link_local())
+            || matches!(destination, IpAddr::V6(address) if (address.segments()[0] & 0xffc0) == 0xfe80)
+        {
+            return Err(simple_error(
+                DiagnosticErrorKind::Policy,
+                DiagnosticStage::HopProbe,
+                "destination address class is not supported",
+            ));
+        }
+        let timeout = deadline_at.saturating_duration_since(tokio::time::Instant::now());
+        if timeout.is_zero() {
+            return Err(simple_error(
+                DiagnosticErrorKind::Timeout,
+                DiagnosticStage::Deadline,
+                "execution deadline exceeded",
+            ));
+        }
+        // Divide the remaining outer budget across rounds so the backend can
+        // never outlive the plan deadline by design; the engine timeout stays
+        // a defensive backstop. A small per-round margin keeps fully silent
+        // traces inside the budget so they report MaxHops instead of racing
+        // the outer timeout. The read timeout only sets backend loop-wakeup
+        // granularity (it never cuts off slow replies), so it stays small.
+        let rounds = u32::from(attempts_per_hop.max(1));
+        let per_round = (timeout / rounds).max(std::time::Duration::from_millis(1));
+        let max_round_duration = per_round
+            .saturating_sub(std::time::Duration::from_millis(100))
+            .max(std::time::Duration::from_millis(1));
+        let read_timeout = std::time::Duration::from_millis(100).min(max_round_duration);
+        let report = eggprobe_native::trace_path(
+            destination,
+            max_hops,
+            attempts_per_hop,
+            read_timeout,
+            max_round_duration,
+            timeout,
+        )
+        .await
+        .map_err(|error| {
+            let kind = match error.kind {
+                eggprobe_native::NativeErrorKind::PermissionDenied => {
+                    DiagnosticErrorKind::PermissionDenied
+                }
+                eggprobe_native::NativeErrorKind::Unsupported => DiagnosticErrorKind::Unsupported,
+                eggprobe_native::NativeErrorKind::Timeout => DiagnosticErrorKind::Timeout,
+                eggprobe_native::NativeErrorKind::Unreachable => {
+                    DiagnosticErrorKind::NetworkUnreachable
+                }
+                eggprobe_native::NativeErrorKind::Io => DiagnosticErrorKind::Io,
+            };
+            simple_error(kind, DiagnosticStage::HopProbe, "UDP trace failed")
+        })?;
+        let summary = eggprobe_native::summarize_trace(destination, max_hops, &report);
+        let termination = trace_termination(report.completed, summary.termination);
+        Ok(ProbeEvidence::Trace(crate::domain::probe::TraceEvidence {
+            destination: destination.to_string(),
+            hops: summary
+                .hops
+                .into_iter()
+                .map(|hop| crate::domain::probe::TraceHop {
+                    hop: hop.hop,
+                    attempts: hop
+                        .attempts
+                        .into_iter()
+                        .map(|attempt| crate::domain::probe::TraceAttempt {
+                            responder: attempt.responder.map(|address| address.to_string()),
+                            rtt_micros: attempt.rtt_micros,
+                            outcome: trace_outcome(attempt.outcome),
+                        })
+                        .collect(),
+                })
+                .collect(),
+            termination,
         }))
     }
 
@@ -1274,6 +1381,36 @@ fn elapsed_since(started: Instant) -> DurationMicros {
     DurationMicros::from_micros(
         u64::try_from(started.elapsed().as_micros().min(u128::from(u64::MAX))).unwrap_or(u64::MAX),
     )
+}
+fn trace_termination(
+    completed: bool,
+    termination: eggprobe_native::TraceTerminationSummary,
+) -> crate::domain::probe::TraceTermination {
+    use crate::domain::probe::TraceTermination as Domain;
+    use eggprobe_native::TraceTerminationSummary as Native;
+    if completed {
+        match termination {
+            Native::DestinationReached => Domain::DestinationReached,
+            Native::Unreachable => Domain::Unreachable,
+            Native::MaxHops => Domain::MaxHops,
+            Native::Deadline => Domain::Deadline,
+        }
+    } else {
+        Domain::Deadline
+    }
+}
+fn trace_outcome(
+    outcome: eggprobe_native::TraceProbeOutcome,
+) -> crate::domain::probe::NativeAttemptOutcome {
+    use crate::domain::probe::NativeAttemptOutcome as Domain;
+    use eggprobe_native::TraceProbeOutcome as Native;
+    match outcome {
+        Native::DestinationReached => Domain::DestinationReached,
+        Native::TimeExceeded => Domain::TimeExceeded,
+        Native::Reply => Domain::Reply,
+        Native::DestinationUnreachable => Domain::DestinationUnreachable,
+        Native::TimedOut => Domain::TimedOut,
+    }
 }
 fn simple_error(
     kind: DiagnosticErrorKind,

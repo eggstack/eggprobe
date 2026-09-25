@@ -79,6 +79,33 @@ fn udp_command_requires_explicit_port() {
 }
 
 #[test]
+fn trace_command_reaches_loopback_with_structured_hops() {
+    let output = binary()
+        .args(["trace", "127.0.0.1", "--max-hops", "3", "--json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(value["probes"][0]["kind"], "trace");
+    assert_eq!(value["probes"][0]["evidence"]["kind"], "trace");
+    assert_eq!(
+        value["probes"][0]["evidence"]["data"]["termination"],
+        "destination_reached"
+    );
+    assert_eq!(value["probes"][0]["evidence"]["data"]["hops"][0]["hop"], 1);
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
+fn trace_command_rejects_out_of_range_bounds() {
+    let output = binary()
+        .args(["trace", "127.0.0.1", "--max-hops", "0", "--json"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+}
+
+#[test]
 fn invalid_check_range_is_usage_error() {
     let output = binary()
         .args([
