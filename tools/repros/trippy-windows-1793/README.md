@@ -73,6 +73,11 @@ Manual equivalent on an elevated Windows host (PowerShell, stable toolchain):
 .\run-evidence.ps1 -Variant candidate-master -Expect Clean -Repeats 10
 ```
 
+The workflow accepts an optional `variants` input (`all` by default;
+otherwise one of `baseline`, `candidate-fix`, `candidate-master`) so a
+single variant can be re-qualified without re-running an already-decided
+gate — for example, master-only qualification after a candidate-fix stop.
+
 ## Interpreting results
 
 - **Case A** — baseline aborts with the defining signature, both candidates

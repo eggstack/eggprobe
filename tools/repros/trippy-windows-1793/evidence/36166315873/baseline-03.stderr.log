@@ -1,0 +1,60 @@
+
+thread 'main' panicked at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\alloc\src\raw_vec\mod.rs:536:30:
+unsafe precondition(s) violated: Layout::from_size_align_unchecked requires that align is a power of 2 and the rounded-up allocation size does not exceed isize::MAX
+
+This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
+stack backtrace:
+   0: std::panicking::begin_panic_handler
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2/library\std\src\panicking.rs:697
+   1: core::panicking::panic_nounwind_fmt
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2/library\core\src\intrinsics\mod.rs:2340
+   2: core::alloc::layout::impl$0::from_size_align_unchecked::precondition_check
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ub_checks.rs:72
+   3: alloc::raw_vec::RawVecInner<alloc::alloc::Global>::current_memory<alloc::alloc::Global>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\alloc\src\raw_vec\mod.rs:536
+   4: alloc::raw_vec::RawVecInner<alloc::alloc::Global>::deallocate<alloc::alloc::Global>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\alloc\src\raw_vec\mod.rs:755
+   5: alloc::raw_vec::impl$3::drop<u8,alloc::alloc::Global>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\alloc\src\raw_vec\mod.rs:406
+   6: core::ptr::drop_in_place<alloc::raw_vec::RawVec<u8,alloc::alloc::Global> >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+   7: core::ptr::drop_in_place<alloc::vec::Vec<u8,alloc::alloc::Global> >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+   8: core::ptr::drop_in_place<trippy_core::probe::UnknownExtension>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+   9: core::ptr::drop_in_place<enum2$<trippy_core::probe::Extension> >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  10: core::ptr::drop_in_place<slice2$<enum2$<trippy_core::probe::Extension> > >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  11: alloc::vec::impl$25::drop<enum2$<trippy_core::probe::Extension>,alloc::alloc::Global>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\alloc\src\vec\mod.rs:3836
+  12: core::ptr::drop_in_place<alloc::vec::Vec<enum2$<trippy_core::probe::Extension>,alloc::alloc::Global> >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  13: core::ptr::drop_in_place<trippy_core::probe::Extensions>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  14: core::ptr::drop_in_place<enum2$<core::option::Option<trippy_core::probe::Extensions> > >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  15: core::ptr::drop_in_place<trippy_core::probe::ProbeComplete>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  16: core::ptr::drop_in_place<enum2$<trippy_core::probe::ProbeStatus> >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  17: core::ptr::drop_in_place<array$<enum2$<trippy_core::probe::ProbeStatus>,512> >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  18: core::ptr::drop_in_place<trippy_core::strategy::state::TracerState>
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ptr\mod.rs:799
+  19: trippy_core::strategy::Strategy<trippy_core::tracer::inner::impl$0::run_internal::closure_env$1<trippy_windows_1793_baseline::main::closure_env$0> >::run<trippy_core::tracer::inner::impl$0::run_internal::closure_env$1<trippy_windows_1793_baseline::main::cl
+             at C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\trippy-core-0.13.0\src\strategy.rs:70
+  20: trippy_core::tracer::inner::TracerInner::run_internal<trippy_windows_1793_baseline::main::closure_env$0>
+             at C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\trippy-core-0.13.0\src\tracer.rs:673
+  21: trippy_core::tracer::inner::TracerInner::run_with<trippy_windows_1793_baseline::main::closure_env$0>
+             at C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\trippy-core-0.13.0\src\tracer.rs:539
+  22: trippy_core::tracer::Tracer::run_with<trippy_windows_1793_baseline::main::closure_env$0>
+             at C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\trippy-core-0.13.0\src\tracer.rs:166
+  23: trippy_windows_1793_baseline::main
+             at .\tools\repros\trippy-windows-1793\baseline\src\main.rs:61
+  24: core::ops::function::FnOnce::call_once<void (*)(),tuple$<> >
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\ops\function.rs:250
+  25: core::hint::black_box
+             at /rustc/29483883eed69d5fb4db01964cdf2af4d86e9cb2\library\core\src\hint.rs:482
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+thread caused non-unwinding panic. aborting.

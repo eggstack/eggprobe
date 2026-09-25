@@ -1,0 +1,4 @@
+REPRO variant=candidate-fix=upstream-0b3c85b
+REPRO target=127.0.0.1 protocol=Udp privilege=Privileged max_ttl=3 max_rounds=3
+REPRO has_privileges=true
+REPRO tracer_built

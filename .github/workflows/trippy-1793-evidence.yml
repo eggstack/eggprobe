@@ -12,6 +12,17 @@ name: C007 Trippy 1793 Windows evidence
 
 on:
   workflow_dispatch:
+    inputs:
+      variants:
+        description: "Variants to qualify (default runs the full baseline/candidate sequence)"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - baseline
+          - candidate-fix
+          - candidate-master
 
 env:
   CARGO_TERM_COLOR: always
@@ -54,16 +65,19 @@ jobs:
           }
 
       - name: Baseline registry 0.13.0 (expect defining abort)
+        if: ${{ inputs.variants == 'all' || inputs.variants == 'baseline' }}
         shell: pwsh
         run: |
           tools/repros/trippy-windows-1793/run-evidence.ps1 -Variant baseline -Expect Abort -Repeats 3
 
       - name: Candidate exact #1793 fix commit (expect clean x10)
+        if: ${{ inputs.variants == 'all' || inputs.variants == 'candidate-fix' }}
         shell: pwsh
         run: |
           tools/repros/trippy-windows-1793/run-evidence.ps1 -Variant candidate-fix -Expect Clean -Repeats 10
 
       - name: Candidate current master (expect clean x10)
+        if: ${{ inputs.variants == 'all' || inputs.variants == 'candidate-master' }}
         shell: pwsh
         run: |
           tools/repros/trippy-windows-1793/run-evidence.ps1 -Variant candidate-master -Expect Clean -Repeats 10
