@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Corrective C005 — Traceroute Privilege and Hosted-Platform Qualification
 
-Status: ready for handoff
+Status: closed
 
 Repository baseline: `0ce9597aa2acad9a61c45a70c3ffaf56333cf3d5`
 

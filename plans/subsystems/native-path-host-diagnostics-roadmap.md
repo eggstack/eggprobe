@@ -173,7 +173,11 @@ Add direct UDP send/receive diagnostics with bounded payload/capture and honest 
 
 Add structured ordered hop/attempt evidence without terminal scraping, with bounded hops/attempts and explicit privilege/termination states.
 
-Current disposition: historical implementation/closure exists, but post-closure hosted CI exposed an invalid platform privilege assumption. C005 is the current authority for restoring truthful Linux/macOS/Windows qualification without changing the schema.
+Current disposition: historical implementation/closure exists; C005 restored
+truthful qualification without changing the schema — Linux/macOS live
+dispositions qualified, Windows live execution blocked on the upstream
+backend fix tracked by C006 (fail-safe `Unsupported` refusal qualified in
+the meantime).
 
 ### M006 — Active path-MTU discovery
 
@@ -241,29 +245,38 @@ C004 completed exact 0..=1024 on-wire payload semantics without weakening reply 
 
 ### C005 — Traceroute privilege and hosted-platform qualification
 
-Status: ready.
+Status: closed.
 
 Plan: `plans/implementation/native-path-host-diagnostics-corrective/005-traceroute-privilege-and-hosted-qualification.md`
 
-Post-M005 hosted run `36138451900` on
-`0ce9597aa2acad9a61c45a70c3ffaf56333cf3d5` failed the live
-`eggprobe trace 127.0.0.1` CLI smoke on Ubuntu job `108082118033` and
-Windows job `108082118099`; macOS job `108082118186`, MSRV job
-`108082117794`, and audit job `108082117983` passed.
+Closure: `plans/closure/native-path-host-diagnostics-corrective/005-status.md`.
 
-The M005 adapter forces `trippy_core::PrivilegeMode::Unprivileged` on every
-platform. Trippy 0.13's own privilege guide states that unprivileged mode is
-supported only on macOS; Linux always requires privilege for the ICMP receive
-side of tracing (root/`CAP_NET_RAW`) and Windows requires an elevated token.
-The published `trippy-privilege 0.13.0` API provides the platform-aware
-discovery/acquisition seam needed by an embedding application.
+C005 replaced the invalid universal-unprivileged assumption with
+platform-aware privilege selection (`trippy-privilege 0.13.0` direct pin,
+read-only discovery, no acquisition, `drop_privileges(false)`), typed
+`PermissionDenied/HopProbe` normalization, deterministic selection tests,
+and host-aware smokes. Hosted forensics additionally proved `trippy-core`
+0.13.0 privileged runs abort on elevated Windows (heap corruption at
+`UnknownExtension` drop), so Windows refuses with typed
+`Unsupported/HopProbe` before backend contact. Qualifying hosted run
+`36156303047` on `53226a3` is fully green (Ubuntu/macOS/Windows/MSRV/audit).
+M005 Linux/macOS dispositions are qualified; Windows live execution waits on
+blocked C006. The closure also records the `WSAECONNRESET`-as-unreachable
+hardening that keeps closed-port UDP evidence deterministic on Windows.
 
-C005 must preserve the M005 structured hop model while making privilege
-selection truthful, mapping unavailable privilege to Eggprobe's existing
-`PermissionDenied` category, and replacing the invalid assumption that every
-ordinary hosted runner can complete a live loopback trace. M005's historical
-closure record remains immutable evidence of the original work; current
-qualification is corrective-required until C005 closes.
+### C006 — Windows trace re-qualification on fixed backend
+
+Status: blocked on a published upstream `trippy-core` release fixing the
+Windows privileged-run heap corruption.
+
+Plan: `plans/implementation/native-path-host-diagnostics-corrective/006-windows-trace-requalification-on-fixed-backend.md`
+
+C005 proved elevated Windows cannot execute on `trippy-core 0.13.0` (fail-fast
+abort, captured backtrace) and installed a version-pinned `Unsupported`
+refusal. C006 re-enables and live-qualifies the privileged Windows path only
+against a published fixed backend consumed as an exact pin — never a Git
+SHA, fork, or vendored patch. M005's Windows disposition stays refusal until
+C006 closes.
 
 ### C003 — Published ICMP backend adoption qualification
 
@@ -290,6 +303,7 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 | C003 published ICMP backend qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | pending | C004 closure + upstream acceptance/merge + published crates.io release |
 | M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | C004 + C003 closure |
 | M004 direct UDP service diagnostics | closed | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | `plans/closure/native-path-host-diagnostics/004-status.md` | — |
-| M005 traceroute/path diagnostics | corrective required | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | historical: `plans/closure/native-path-host-diagnostics/005-status.md` | C005 hosted/platform privilege corrective |
-| C005 traceroute privilege and hosted-platform qualification | ready | `plans/implementation/native-path-host-diagnostics-corrective/005-traceroute-privilege-and-hosted-qualification.md` | pending | — |
+| M005 traceroute/path diagnostics | conditionally closed | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | historical: `plans/closure/native-path-host-diagnostics/005-status.md`; current: `plans/closure/native-path-host-diagnostics-corrective/005-status.md` | Linux/macOS live-qualified by C005; Windows live execution blocked on upstream backend fix (C006) |
+| C005 traceroute privilege and hosted-platform qualification | closed | `plans/implementation/native-path-host-diagnostics-corrective/005-traceroute-privilege-and-hosted-qualification.md` | `plans/closure/native-path-host-diagnostics-corrective/005-status.md` | Qualifying hosted run `36156303047` on `53226a3` fully green |
+| C006 Windows trace re-qualification on fixed backend | blocked | `plans/implementation/native-path-host-diagnostics-corrective/006-windows-trace-requalification-on-fixed-backend.md` | pending | Published `trippy-core` release fixing the Windows privileged-run heap corruption |
 | M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | PMTU control survey (see §4) finds no qualifying DF/PTB controls and no Linux/netns validation environment in reach; C005 does not unblock that separate control gap |
