@@ -376,12 +376,22 @@ pub struct TraceSummary {
 /// reports.
 pub const TRACE_PERMISSION_MESSAGE: &str = "UDP trace requires additional local privilege";
 
+/// Fixed machine-visible message for traces refused by host platform policy
+/// (the backend cannot execute the trace family on this host).
+/// Dependency and operating-system error text is never forwarded into
+/// reports.
+pub const TRACE_UNSUPPORTED_MESSAGE: &str = "UDP trace is not supported on this platform";
+
 /// Whether the current host lets this process execute a UDP trace.
 ///
 /// `Executable` means the backend mode selected for this host can run here:
 /// unprivileged mode on macOS, or privileged mode where the required local
-/// privilege is already effective. `PermissionDenied` means the host requires
-/// a privilege this process does not hold. This derives from the same
+/// privilege is already effective and the backend supports the privileged
+/// path. `PermissionDenied` means the host requires a privilege this process
+/// does not hold. `Unsupported` means the backend cannot execute the trace
+/// family on this host even with privilege (currently Windows on
+/// `trippy-core 0.13.0`, whose privileged run corrupts memory and aborts the
+/// process instead of returning an error). This derives from the same
 /// decision as [`trace_path`] so host-aware tests stay truthful without
 /// hard-coding per-OS expectations.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -390,6 +400,8 @@ pub enum TraceCapability {
     Executable,
     /// Required local privilege is unavailable to this process.
     PermissionDenied,
+    /// The backend cannot execute traces on this host.
+    Unsupported,
 }
 
 /// Report the current host's trace capability without sending any probe.
@@ -397,7 +409,8 @@ pub enum TraceCapability {
 pub fn trace_capability() -> TraceCapability {
     match current_privilege_mode() {
         Ok(_) => TraceCapability::Executable,
-        Err(_) => TraceCapability::PermissionDenied,
+        Err(NativeErrorKind::PermissionDenied) => TraceCapability::PermissionDenied,
+        Err(_) => TraceCapability::Unsupported,
     }
 }
 
@@ -428,23 +441,36 @@ struct PrivilegeFacts {
 /// Pure privilege-mode policy shared by production and tests.
 ///
 /// - `unprivileged_supported` is true only where the backend documents
-///   unprivileged tracing;
+///   unprivileged tracing (macOS for Trippy 0.13 UDP);
+/// - `privileged_supported` is false where the backend cannot execute the
+///   privileged path even with privilege (Windows on `trippy-core 0.13.0`,
+///   whose privileged run corrupts heap memory and aborts the process — see
+///   `current_privilege_mode`);
 /// - `None` facts model a discovery failure and deny with the same bounded
 ///   category instead of leaking dependency text;
 /// - a mere privilege deficit is always `PermissionDenied`, never
 ///   `Unsupported`: the trace family itself is supported, the host simply
-///   withholds the required privilege.
+///   withholds the required privilege. `Unsupported` is reserved for a
+///   backend that cannot run even when privilege is present.
 fn select_privilege_mode(
     unprivileged_supported: bool,
+    privileged_supported: bool,
     facts: Option<PrivilegeFacts>,
 ) -> Result<TracePrivilegeMode, NativeErrorKind> {
     if unprivileged_supported {
         return Ok(TracePrivilegeMode::Unprivileged);
     }
-    if facts.is_some_and(|facts| facts.has_privileges) {
-        Ok(TracePrivilegeMode::Privileged)
-    } else {
-        Err(NativeErrorKind::PermissionDenied)
+    match facts {
+        Some(PrivilegeFacts {
+            has_privileges: true,
+        }) if privileged_supported => Ok(TracePrivilegeMode::Privileged),
+        Some(PrivilegeFacts {
+            has_privileges: true,
+        }) => Err(NativeErrorKind::Unsupported),
+        Some(PrivilegeFacts {
+            has_privileges: false,
+        })
+        | None => Err(NativeErrorKind::PermissionDenied),
     }
 }
 
@@ -457,6 +483,14 @@ fn select_privilege_mode(
 /// concurrent traces cannot race on process- or thread-wide capability sets
 /// and no privilege-drop lifecycle is owed. A discovery failure denies with
 /// the same bounded category instead of leaking dependency text.
+///
+/// Windows never reaches the backend: `trippy-core 0.13.0`'s privileged run
+/// corrupts heap memory there (observed as a fail-fast abort while dropping a
+/// parsed `UnknownExtension` on an elevated hosted runner) instead of
+/// returning an error, so Eggprobe refuses with `Unsupported` before any
+/// backend contact. Non-elevated Windows still reports `PermissionDenied`.
+/// Both refusals use fixed messages; re-qualify the privileged Windows path
+/// only against a backend release that fixes the corruption.
 fn current_privilege_mode() -> Result<TracePrivilegeMode, NativeErrorKind> {
     // Unprivileged support follows backend documentation per target (Trippy
     // 0.13 documents it for macOS only); discovery runs solely where a
@@ -464,8 +498,12 @@ fn current_privilege_mode() -> Result<TracePrivilegeMode, NativeErrorKind> {
     if cfg!(target_os = "macos") {
         return Ok(TracePrivilegeMode::Unprivileged);
     }
+    // Version-pinned backend defect (see above): the privileged path cannot
+    // execute on Windows even with privilege present.
+    let privileged_supported = !cfg!(target_os = "windows");
     select_privilege_mode(
         false,
+        privileged_supported,
         trippy_privilege::Privilege::discover()
             .ok()
             .map(|privilege| PrivilegeFacts {
@@ -476,10 +514,13 @@ fn current_privilege_mode() -> Result<TracePrivilegeMode, NativeErrorKind> {
 
 /// Trace one bounded direct path with UDP probes.
 ///
-/// macOS uses the backend's documented unprivileged mode. Linux and Windows
-/// require already-effective local privilege (Linux effective `CAP_NET_RAW`,
-/// Windows an elevated token) and report [`NativeErrorKind::PermissionDenied`]
-/// otherwise; lack of privilege is an execution failure, never a silent hop.
+/// macOS uses the backend's documented unprivileged mode. Linux requires
+/// already-effective local privilege (effective `CAP_NET_RAW`) and reports
+/// [`NativeErrorKind::PermissionDenied`] otherwise; lack of privilege is an
+/// execution failure, never a silent hop. Windows reports
+/// [`NativeErrorKind::Unsupported`] without contacting the backend
+/// (`trippy-core 0.13.0`'s privileged run aborts there instead of returning
+/// an error).
 ///
 /// Each round sends one probe per TTL from 1 through `max_hops` using the
 /// classic (non-Paris) strategy and a fixed traditional destination port.
@@ -1267,9 +1308,10 @@ mod tests {
     fn trace_privilege_selection_uses_unprivileged_mode_where_documented() {
         // macOS-style selection: documented unprivileged support wins without
         // consulting host privilege facts.
-        let without = select_privilege_mode(false, None);
+        let without = select_privilege_mode(false, true, None);
         assert_eq!(without, Err(NativeErrorKind::PermissionDenied));
         let macos = select_privilege_mode(
+            true,
             true,
             Some(PrivilegeFacts {
                 has_privileges: false,
@@ -1280,10 +1322,11 @@ mod tests {
 
     #[test]
     fn trace_privilege_selection_requires_effective_privilege_elsewhere() {
-        // Linux privilege available: permitted/effective `CAP_NET_RAW`
-        // already present selects the privileged backend mode.
+        // Linux privilege available: already-effective `CAP_NET_RAW`
+        // selects the privileged backend mode.
         let granted = select_privilege_mode(
             false,
+            true,
             Some(PrivilegeFacts {
                 has_privileges: true,
             }),
@@ -1293,11 +1336,38 @@ mod tests {
         // fallback or a generic failure.
         let denied = select_privilege_mode(
             false,
+            true,
             Some(PrivilegeFacts {
                 has_privileges: false,
             }),
         );
         assert_eq!(denied, Err(NativeErrorKind::PermissionDenied));
+        // Windows non-elevated processes deny even where the privileged path
+        // itself is version-pinned unsupported.
+        let windows_denied = select_privilege_mode(
+            false,
+            false,
+            Some(PrivilegeFacts {
+                has_privileges: false,
+            }),
+        );
+        assert_eq!(windows_denied, Err(NativeErrorKind::PermissionDenied));
+    }
+
+    #[test]
+    fn trace_privilege_selection_refuses_unsupported_backend_before_contact() {
+        // Windows elevated processes hold the required privilege, yet the
+        // `trippy-core 0.13.0` privileged path cannot execute there — the
+        // refusal is `Unsupported`, reached before any backend contact, so no
+        // backend abort can escape into the host process.
+        let refused = select_privilege_mode(
+            false,
+            false,
+            Some(PrivilegeFacts {
+                has_privileges: true,
+            }),
+        );
+        assert_eq!(refused, Err(NativeErrorKind::Unsupported));
     }
 
     #[test]
@@ -1305,7 +1375,7 @@ mod tests {
         // A discovery error (facts unavailable) denies with the same bounded
         // category; no dependency text escapes and the deficit never becomes
         // `Unsupported`.
-        let denied = select_privilege_mode(false, None);
+        let denied = select_privilege_mode(false, true, None);
         assert_eq!(denied, Err(NativeErrorKind::PermissionDenied));
         assert_ne!(denied, Err(NativeErrorKind::Unsupported));
     }
@@ -1316,7 +1386,8 @@ mod tests {
         // would decide: executable where the mode selection succeeds.
         let expected = match current_privilege_mode() {
             Ok(_) => TraceCapability::Executable,
-            Err(_) => TraceCapability::PermissionDenied,
+            Err(NativeErrorKind::PermissionDenied) => TraceCapability::PermissionDenied,
+            Err(_) => TraceCapability::Unsupported,
         };
         assert_eq!(trace_capability(), expected);
     }
@@ -1359,6 +1430,19 @@ mod tests {
                 .expect_err("trace without privilege must deny, not hang");
                 assert_eq!(error.kind, NativeErrorKind::PermissionDenied);
             }
+            TraceCapability::Unsupported => {
+                let error = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .expect_err("unsupported trace must refuse, not abort");
+                assert_eq!(error.kind, NativeErrorKind::Unsupported);
+            }
         }
     }
 
@@ -1397,23 +1481,69 @@ mod tests {
                 .expect_err("trace without privilege must deny, not hang");
                 assert_eq!(error.kind, NativeErrorKind::PermissionDenied);
             }
+            TraceCapability::Unsupported => {
+                let error = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .expect_err("unsupported trace must refuse, not abort");
+                assert_eq!(error.kind, NativeErrorKind::Unsupported);
+            }
         }
     }
 
     #[tokio::test]
     async fn trace_path_reports_partial_report_when_bounded_wait_expires() {
         let target: IpAddr = "127.0.0.1".parse().unwrap();
-        let report = trace_path(
-            target,
-            3,
-            1,
-            std::time::Duration::from_millis(300),
-            std::time::Duration::from_secs(3),
-            std::time::Duration::ZERO,
-        )
-        .await
-        .unwrap();
-        assert!(!report.completed);
+        match trace_capability() {
+            TraceCapability::Executable => {
+                let report = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::ZERO,
+                )
+                .await
+                .unwrap();
+                assert!(!report.completed);
+            }
+            // A refused trace denies inside the worker fast enough to beat a
+            // zero deadline, so refusal arms use a generous budget and assert
+            // the refusal itself rather than racing the timer.
+            TraceCapability::PermissionDenied => {
+                let error = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .expect_err("denied trace must fail, not hang");
+                assert_eq!(error.kind, NativeErrorKind::PermissionDenied);
+            }
+            TraceCapability::Unsupported => {
+                let error = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .expect_err("unsupported trace must fail, not hang");
+                assert_eq!(error.kind, NativeErrorKind::Unsupported);
+            }
+        }
     }
 }
 

@@ -477,11 +477,14 @@ impl ProbeEngine {
                 }
                 eggprobe_native::NativeErrorKind::Io => DiagnosticErrorKind::Io,
             };
-            // Privilege denial carries its own fixed message so operators can
-            // distinguish a host policy refusal from a local failure without
-            // ever receiving dependency or OS error text.
+            // Privilege denial and platform refusal carry their own fixed
+            // messages so operators can distinguish a host policy refusal or
+            // an unsupported platform from a local failure without ever
+            // receiving dependency or OS error text.
             let message = if kind == DiagnosticErrorKind::PermissionDenied {
                 eggprobe_native::TRACE_PERMISSION_MESSAGE
+            } else if kind == DiagnosticErrorKind::Unsupported {
+                eggprobe_native::TRACE_UNSUPPORTED_MESSAGE
             } else {
                 "UDP trace failed"
             };

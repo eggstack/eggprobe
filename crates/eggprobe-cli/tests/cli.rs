@@ -129,6 +129,24 @@ fn trace_command_reaches_loopback_with_structured_hops() {
             );
             assert!(output.stderr.is_empty());
         }
+        eggprobe_core::TraceCapability::Unsupported => {
+            // Hosts where the backend cannot execute the trace family even
+            // with privilege must refuse with typed `unsupported` before any
+            // backend contact — never an abort, a generic failure, or empty
+            // output.
+            assert!(
+                !output.status.success(),
+                "refused trace must not report success (stdout={:?})",
+                bounded(&stdout)
+            );
+            assert_eq!(value["probes"][0]["error"]["kind"], "unsupported");
+            assert_eq!(value["probes"][0]["error"]["stage"], "hop_probe");
+            assert_eq!(
+                value["probes"][0]["error"]["message"],
+                "UDP trace is not supported on this platform"
+            );
+            assert!(output.stderr.is_empty());
+        }
     }
 }
 

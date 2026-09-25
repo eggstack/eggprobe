@@ -420,6 +420,7 @@ async fn trace_probe_reaches_loopback_with_ordered_hop_evidence() {
             assert!(!rendered.contains("localhost"));
         }
         TraceCapability::PermissionDenied => assert_trace_permission_denied(&report),
+        TraceCapability::Unsupported => assert_trace_unsupported(&report),
     }
 }
 
@@ -447,6 +448,7 @@ async fn trace_probe_reaches_ipv6_loopback() {
             );
         }
         TraceCapability::PermissionDenied => assert_trace_permission_denied(&report),
+        TraceCapability::Unsupported => assert_trace_unsupported(&report),
     }
 }
 
@@ -474,6 +476,7 @@ async fn trace_probe_respects_configured_bounds() {
             serde_json::to_value(&report).unwrap();
         }
         TraceCapability::PermissionDenied => assert_trace_permission_denied(&report),
+        TraceCapability::Unsupported => assert_trace_unsupported(&report),
     }
 }
 
@@ -496,6 +499,23 @@ fn assert_trace_permission_denied(report: &eggprobe_core::ProbeReport) {
         "UDP trace requires additional local privilege"
     );
     // No dependency or OS error text may leak into the machine report.
+    let rendered = serde_json::to_string(report).unwrap();
+    assert!(!rendered.contains("expression"));
+}
+
+/// Shared host-policy-aware refusal assertion: where the backend cannot
+/// execute the trace family even with privilege, the smoke must report typed
+/// `Unsupported` at `HopProbe` with the fixed refusal message — never an
+/// abort, a generic failure, or a silent skip.
+fn assert_trace_unsupported(report: &eggprobe_core::ProbeReport) {
+    assert_eq!(report.status, eggprobe_core::ReportStatus::Unsupported);
+    let error = report.probes[0]
+        .error
+        .as_ref()
+        .expect("refused trace must carry a diagnostic error");
+    assert_eq!(error.kind, eggprobe_core::DiagnosticErrorKind::Unsupported);
+    assert_eq!(error.stage, eggprobe_core::DiagnosticStage::HopProbe);
+    assert_eq!(error.message, "UDP trace is not supported on this platform");
     let rendered = serde_json::to_string(report).unwrap();
     assert!(!rendered.contains("expression"));
 }

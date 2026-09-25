@@ -97,8 +97,11 @@ strategy; no subprocess, no terminal parsing):
 - privilege follows the tracing backend's documented platform support
   (Trippy 0.13): macOS traces unprivileged; Linux requires already-effective
   `CAP_NET_RAW` (root, file capabilities, or an ambient set — Eggprobe never
-  invokes `sudo`, changes file capabilities, or prompts for elevation) and
-  Windows requires an already elevated process;
+  invokes `sudo`, changes file capabilities, or prompts for elevation);
+  Windows reports `unsupported` without contacting the backend because the
+  `trippy-core 0.13.0` privileged run corrupts memory and aborts the process
+  there instead of returning an error (re-qualification tracks a fixed
+  backend release);
 - where required privilege is unavailable the trace fails fast with typed
   `permission_denied` at stage `hop_probe` and the fixed message
   `UDP trace requires additional local privilege` — never a silent hop, a
