@@ -1,0 +1,19 @@
+# Isolated Trippy #1793 reproducer — BASELINE variant.
+#
+# Exact crates.io registry dependency (the C005 qualifying line).
+# Expected: elevated-Windows non-unwinding abort (0xC0000409).
+# This manifest is deliberately outside the Eggprobe workspace.
+[package]
+name = "trippy-windows-1793-baseline"
+version = "0.1.0"
+edition = "2021"
+description = "C007 isolated baseline: registry trippy 0.13.0 Windows abort reproducer (evidence only, not a product dependency)"
+license = "MIT"
+
+# Detach from the Eggprobe workspace: this harness must never enter
+# production dependency resolution.
+[workspace]
+
+[dependencies]
+trippy-core = "=0.13.0"
+trippy-privilege = "=0.13.0"

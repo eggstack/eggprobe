@@ -4,6 +4,15 @@ members = [
     "crates/eggprobe-core",
     "crates/eggprobe-cli",
 ]
+# C007 evidence-only Trippy reproducer crates. Each carries its own empty
+# `[workspace]` table; the exclusion below states the isolation explicitly so
+# these crates (including their Git dependencies) can never enter production
+# dependency resolution or the ordinary `--workspace` verification matrix.
+exclude = [
+    "tools/repros/trippy-windows-1793/baseline",
+    "tools/repros/trippy-windows-1793/candidate-fix",
+    "tools/repros/trippy-windows-1793/candidate-master",
+]
 resolver = "3"
 
 [workspace.package]

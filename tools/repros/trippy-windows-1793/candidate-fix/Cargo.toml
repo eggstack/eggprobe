@@ -1,0 +1,20 @@
+# Isolated Trippy #1793 reproducer — CANDIDATE-FIX variant.
+#
+# Exact upstream fix commit for issue #1793 (evidence-only Git dependency;
+# MUST NOT be copied into Eggprobe production manifests).
+# Expected: no abort under the same elevated-Windows conditions.
+# This manifest is deliberately outside the Eggprobe workspace.
+[package]
+name = "trippy-windows-1793-candidate-fix"
+version = "0.1.0"
+edition = "2021"
+description = "C007 isolated candidate: exact upstream #1793 fix commit (evidence only, not a product dependency)"
+license = "MIT"
+
+# Detach from the Eggprobe workspace: this harness must never enter
+# production dependency resolution.
+[workspace]
+
+[dependencies]
+trippy-core = { git = "https://github.com/fujiapple852/trippy.git", rev = "0b3c85bae2257915583d71392ea6d10c1cb4b75b" }
+trippy-privilege = { git = "https://github.com/fujiapple852/trippy.git", rev = "0b3c85bae2257915583d71392ea6d10c1cb4b75b" }

@@ -1,0 +1,77 @@
+# C007 evidence job — Trippy #1793 Windows fix qualification.
+#
+# Isolated, manually-triggered ONLY (`workflow_dispatch`). This workflow is
+# deliberately NOT part of the ordinary always-on quality matrix in `ci.yml`:
+# it builds the registry 0.13.0 baseline that is expected to abort the child
+# process on elevated Windows, plus exact-upstream-commit candidates, inside
+# the evidence-only harness at `tools/repros/trippy-windows-1793/`.
+#
+# Plan: plans/implementation/native-path-host-diagnostics-corrective/007-trippy-1793-windows-fix-qualification-and-upstream-handoff.md
+# Closure: plans/closure/native-path-host-diagnostics-corrective/007-status.md
+name: C007 Trippy 1793 Windows evidence
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  windows-evidence:
+    name: Elevated Windows baseline/candidate qualification
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Record Windows runner image and OS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Write-Host "EVIDENCE runner_os=$env:RUNNER_OS runner_arch=$env:RUNNER_ARCH image=$env:ImageOS"
+          Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsHardwareAbstractionLayer | Format-List
+          systeminfo | Select-String "OS Name", "OS Version", "System Type"
+
+      - name: Record Rust and Cargo versions
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          rustc -Vv
+          cargo --version
+
+      - name: Prove elevation before privileged mode
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+          Write-Host "EVIDENCE elevated=$isAdmin user=$env:USERNAME"
+          whoami /groups | Select-String "S-1-16-12288"
+          if (-not $isAdmin) {
+            Write-Error "EVIDENCE NOT_ELEVATED: this job requires an elevated Windows process"
+            exit 2
+          }
+
+      - name: Baseline registry 0.13.0 (expect defining abort)
+        shell: pwsh
+        run: |
+          tools/repros/trippy-windows-1793/run-evidence.ps1 -Variant baseline -Expect Abort -Repeats 3
+
+      - name: Candidate exact #1793 fix commit (expect clean x10)
+        shell: pwsh
+        run: |
+          tools/repros/trippy-windows-1793/run-evidence.ps1 -Variant candidate-fix -Expect Clean -Repeats 10
+
+      - name: Candidate current master (expect clean x10)
+        shell: pwsh
+        run: |
+          tools/repros/trippy-windows-1793/run-evidence.ps1 -Variant candidate-master -Expect Clean -Repeats 10
+
+      - name: Upload evidence logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trippy-1793-evidence-logs
+          path: tools/repros/trippy-windows-1793/logs/
+          retention-days: 90

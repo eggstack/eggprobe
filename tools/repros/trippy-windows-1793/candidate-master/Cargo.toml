@@ -1,0 +1,23 @@
+# Isolated Trippy #1793 reproducer — CANDIDATE-MASTER variant.
+#
+# Reviewed upstream master at C007 plan time (evidence-only Git dependency;
+# MUST NOT be copied into Eggprobe production manifests). If upstream master
+# advances before the evidence run, update `rev` and record both the planned
+# SHA (`c0c758eb1069151eafa6bd8227bb446c2b4d1506`) and the actually-tested
+# SHA in the closure record.
+# Expected: no abort under the same elevated-Windows conditions.
+# This manifest is deliberately outside the Eggprobe workspace.
+[package]
+name = "trippy-windows-1793-candidate-master"
+version = "0.1.0"
+edition = "2021"
+description = "C007 isolated candidate: upstream master containing the #1793 fix (evidence only, not a product dependency)"
+license = "MIT"
+
+# Detach from the Eggprobe workspace: this harness must never enter
+# production dependency resolution.
+[workspace]
+
+[dependencies]
+trippy-core = { git = "https://github.com/fujiapple852/trippy.git", rev = "c0c758eb1069151eafa6bd8227bb446c2b4d1506" }
+trippy-privilege = { git = "https://github.com/fujiapple852/trippy.git", rev = "c0c758eb1069151eafa6bd8227bb446c2b4d1506" }
