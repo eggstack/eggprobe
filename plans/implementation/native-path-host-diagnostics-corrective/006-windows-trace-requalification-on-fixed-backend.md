@@ -4,6 +4,8 @@ Status: blocked
 
 Repository baseline: `53226a3`
 
+Current blocker refinement baseline: `f2167ee9332d94bf71c06babc183d87b059cc310`
+
 Source roadmap:
 
 - `plans/subsystems/native-path-host-diagnostics-roadmap.md`
@@ -31,22 +33,34 @@ the aborting path.
 
 ## 2. Blocker / readiness gate
 
-A published, immutable crates.io release of `trippy-core` (plus its
-`trippy-privilege` line) containing a fix for the Windows privileged-run
-memory corruption, consumable as an exact pin under Rust 1.89 with no new
-advisories. A Git SHA, fork, or vendored patch is not an accepted production
-bridge (same rule as C003).
+C007 must first close:
+
+- `plans/implementation/native-path-host-diagnostics-corrective/007-trippy-1793-windows-fix-qualification-and-upstream-handoff.md`
+
+C007 owns proof that upstream Trippy issue #1793 / fix commit
+`0b3c85bae2257915583d71392ea6d10c1cb4b75b` actually resolves the same
+elevated-Windows reproducer that triggered C005.
+
+After C007 closes, C006 still requires a published, immutable crates.io release
+of `trippy-core` plus the matching `trippy-privilege` line containing that
+qualified fix (or an explicitly reconciled equivalent), consumable as an exact
+pin under Rust 1.89 with no new advisories.
+
+A Git SHA, fork, or vendored patch is permitted only inside C007's isolated
+evidence harness. It is not an accepted Eggprobe production bridge (same rule
+as C003).
 
 ## 3. Entry criteria
 
-1. Upstream issue filed against `fujiapple852/trippy` with the C005
-   backtrace, the loopback repro (`eggprobe trace 127.0.0.1` on an elevated
-   Windows host via `trippy-core 0.13.0` privileged UDP), and confirmation
-   from the maintainer that the corruption is addressed.
-2. Published release containing the fix, reviewed against Rust 1.89,
-   dependency/security policy, and the M005 silent-attempt/no-reverse-DNS
-   qualification (as done for 0.13.0 in the historical M005 closure).
-3. No schema change required by the adoption.
+1. C007 closure records that the C005 reproducer fails on registry
+   `trippy-core 0.13.0` and no longer aborts on upstream fix commit
+   `0b3c85b` and/or a reconciled current master containing it.
+2. Upstream issue #1793 (or a C007-created follow-up if the existing fix is
+   insufficient) is the durable upstream reference.
+3. A published release containing the C007-qualified fix exists and is
+   reviewed against Rust 1.89, dependency/security policy, and the M005
+   silent-attempt/no-reverse-DNS qualification.
+4. No schema change is required by the adoption.
 
 ## 4. Expected work (after unblock)
 
