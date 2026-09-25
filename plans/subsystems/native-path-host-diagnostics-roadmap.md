@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001/M002 closed, C001 closed, C002 corrective required, C004 ready, C003/M003 blocked, M004 ready, M005/M006 blocked
+Status: active planning; M001/M002/M004 closed, C001 closed, C002 corrective required, C004 ready, C003/M003 blocked, M005/M006 blocked
 
 Long-term references:
 
@@ -257,6 +257,6 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 | C004 complete ICMP semantics/durable handoff | closed | `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md` | `plans/closure/native-path-host-diagnostics-corrective/004-status.md` | PR open; C003 waits on upstream acceptance/merge and crates.io publication |
 | C003 published ICMP backend qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | pending | C004 closure + upstream acceptance/merge + published crates.io release |
 | M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | C004 + C003 closure |
-| M004 direct UDP service diagnostics | ready (parallel to M003 after M001) | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 closed; M002 source/interface seam closed; not held behind M003 |
+| M004 direct UDP service diagnostics | closed | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | `plans/closure/native-path-host-diagnostics/004-status.md` | — |
 | M005 traceroute/path diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | pending | `tracert` 0.12.0 loses silent attempts, deduplicates hops, reverse-resolves by default, and duplicates `netdev` |
 | M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | M004 and M005 seams remain open; safe platform controls still require qualification |

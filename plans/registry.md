@@ -33,7 +33,7 @@ implementation plans, closure records, corrective addenda, and Git history.
 
 Last closure-backed product implementation head:
 
-`6e45e857e6a621f9e5a895ab7618a8b6dbaa6d6b` (Native M001/M002)
+`258e64dc5a6eceebbf9e133cb0ace9c91415948b` (Native M001/M002/M004)
 
 C003 planning baseline:
 
@@ -108,7 +108,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Release/packaging | active | M004 closed (first standalone release qualified as 0.1.1); C001–C006 closed; M002 operationally qualified | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
-| Native path/host diagnostics | active | M001/M002 closed; C002 corrective required; C004 ICMP semantic/durable-handoff corrective closed at tested upstream commit `0407714` with PR #9; C003/M003 blocked behind upstream acceptance/merge + publication; M004 ready; M005/M006 blocked | `plans/subsystems/native-path-host-diagnostics-roadmap.md` |
+| Native path/host diagnostics | active | M001/M002/M004 closed; C002 corrective required; C004 ICMP semantic/durable-handoff corrective closed at tested upstream commit `0407714` with PR #9; C003/M003 blocked behind upstream acceptance/merge + publication; M005/M006 blocked | `plans/subsystems/native-path-host-diagnostics-roadmap.md` |
 | QUIC/H3 expansion | roadmap-level | routed datagram composition remains separate from Phase 8 | Phase 9 prerequisites unresolved |
 
 ## Dependency-ready work
@@ -122,7 +122,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Native path/host diagnostics corrective | C001 planning/documentation and execution realignment | closed | `plans/implementation/native-path-host-diagnostics-corrective/001-planning-documentation-and-execution-realignment.md` | Documentation/planning-only corrective; closure `plans/closure/native-path-host-diagnostics-corrective/001-status.md`. M004 now independently ready after C001; M003 continues as parallel blocked research line. |
 | Native path/host diagnostics corrective | C002 ping-async upstream ICMP contract enablement | corrective required | `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md` | Historical prototype/closure preserved; C004 corrects incomplete exact-payload semantics, responder plumbing, and non-durable `/tmp` handoff evidence. |
 | Native path/host diagnostics corrective | C004 complete ICMP semantics and durable upstream handoff | closed | `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md` | Tested upstream commit `0407714`; durable fork branch and upstream PR #9; closure `plans/closure/native-path-host-diagnostics-corrective/004-status.md`. C003 still requires upstream acceptance/merge and crates.io publication. |
-| Native path/host diagnostics | M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001/M002 are closed; direct UDP is independent of M003 ICMP research after M001 (see native roadmap §6) |
+| Native path/host diagnostics | M004 direct UDP service diagnostics | closed | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | Connected direct UDP send/receive with honest transmit/timeout/unreachable semantics closed at `258e64dc5a6eceebbf9e133cb0ace9c91415948b`; `plans/closure/native-path-host-diagnostics/004-status.md` |
 
 ## Release evidence gate
 
@@ -230,7 +230,7 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
 8. ~~Execute **Native M001**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/001-status.md`.
 9. ~~Execute **Native M002**~~ — closed at `6e45e85`; hosted run `36051400630` green; closure `plans/closure/native-path-host-diagnostics/002-status.md`.
 10. ~~Execute **Native corrective C001** before the next capability handoff~~ — closed; planning/docs/release-identity/M003↔M004 sequencing realigned; closure `plans/closure/native-path-host-diagnostics-corrective/001-status.md`.
-11. **Native M004** may execute independently now.
+11. ~~Execute **Native M004**~~ — closed at `258e64dc5a6eceebbf9e133cb0ace9c91415948b`; closure `plans/closure/native-path-host-diagnostics/004-status.md`.
 12. Treat historical **Native corrective C002** as **corrective required**: its prototype/API direction is useful, but exact 0..7-byte wire payload semantics, real responder plumbing, and durable remote handoff evidence were not complete.
 13. ~~Execute **Native corrective C004**~~ — closed: tested upstream commit `0407714`, durable fork branch, PR #9, and closure `plans/closure/native-path-host-diagnostics-corrective/004-status.md`.
 14. Wait for upstream acceptance/merge and an immutable crates.io release containing the C004-qualified interface, then execute **Native corrective C003**.
