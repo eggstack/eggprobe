@@ -251,7 +251,13 @@ pub async fn udp_exchange(
             })
         }
         Ok(Err(error)) => match error.kind() {
+            // `ConnectionReset` is the Windows (`WSAECONNRESET`) delivery of
+            // an ICMP error on a connected UDP socket — the same unreachable
+            // feedback Linux surfaces as `ConnectionRefused`. On a socket
+            // that just transmitted, it unambiguously reports remote
+            // unreachability rather than a local failure.
             std::io::ErrorKind::ConnectionRefused
+            | std::io::ErrorKind::ConnectionReset
             | std::io::ErrorKind::HostUnreachable
             | std::io::ErrorKind::NetworkUnreachable => Ok(UdpExchange {
                 local,
