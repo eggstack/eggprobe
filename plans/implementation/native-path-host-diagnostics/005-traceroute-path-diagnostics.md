@@ -1,6 +1,6 @@
 # Native M005 — Traceroute and Path Diagnostics
 
-Status: closed
+Status: historical closure retained; corrective C005 required after hosted Linux/Windows failure
 
 Repository baseline: `8055730df76f187d94ff83b810d93cb935bb8c37`
 
@@ -128,3 +128,24 @@ Create `plans/closure/native-path-host-diagnostics/005-status.md` with backend c
 ## Handoff notes
 
 A richer backend can be reconsidered later only if Eggprobe explicitly adopts ECMP/Paris/MTR-class goals.
+
+
+## Post-closure corrective disposition
+
+Hosted CI after the M005 implementation invalidated one qualification
+assumption from the closure record. Run `36138451900` fails
+`trace_command_reaches_loopback_with_structured_hops` on ordinary Ubuntu and
+Windows runners while macOS passes.
+
+The implementation forces `PrivilegeMode::Unprivileged` on all platforms.
+Trippy 0.13 documents that mode as macOS-only; Linux requires root or
+`CAP_NET_RAW`, and Windows requires an elevated token. The structured trace
+model remains useful, but current Linux/Windows live execution and platform
+qualification are not closure-backed.
+
+Current corrective authority:
+
+- `plans/implementation/native-path-host-diagnostics-corrective/005-traceroute-privilege-and-hosted-qualification.md`
+
+Do not rewrite the historical M005 closure record. C005 must supply the
+regression evidence and current qualification.

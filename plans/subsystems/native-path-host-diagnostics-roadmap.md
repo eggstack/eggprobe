@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001/M002/M004/M005 closed, C001 closed, C002 corrective required, C004 ready, C003/M003 blocked, M006 blocked
+Status: active planning; M001/M002/M004 closed, M005 corrective required with C005 ready, C001/C004 closed, C002 corrective required, C003/M003 blocked, M006 blocked
 
 Long-term references:
 
@@ -92,7 +92,7 @@ these dependencies and decisions:
 | `ping-async` 1.0.2 | rejected for M003 | Current crates.io version differs from the plan's noted 1.2.x line. Its public request API does not accept payload bytes/length and its reply exposes destination/status/RTT without a separate responder address. |
 | `ping-rs` 0.1.2 | rejected alternative for M003 | MIT, no declared MSRV. The async Windows path unwraps ICMP handle creation and can panic on permission/OS failure; its OS error includes display text. This does not meet no-panic, safe-normalization requirements. |
 | `tracert` 0.12.0 | rejected for M005 | MIT; edition 2024; public results omit silent per-hop attempts, deduplicate responders, and reverse-resolve the destination unconditionally. It also requires a separate `netdev` 0.41.x alongside 0.46.3. Still the latest published version at M005 execution; rejection retained. |
-| `trippy-core` 0.13.0 | accepted for M005 | Apache-2.0; declared rust-version 1.78, workspace MSRV check passed on 1.89.0; structured `Round`/`ProbeStatus`/`ProbeComplete`/`CompletionReason`/`Error` API preserving silent `Awaited` attempts; no reverse-DNS crate and no second `netdev` in its tree; unprivileged UDP mode needs no capabilities; exact pin with lockfile. Known bounds: `Classic` supports only `FixedSrc`/`FixedDest` (adapter uses per-trace unique `FixedSrc`); round completion follows backend loop wakeups (engine fixes 100 ms read granularity); `IcmpPacketCode`/`ProbeFailed` lack public exports (extraction arms for those pinned by live evidence + review). |
+| `trippy-core` 0.13.0 | accepted for M005 data/path API; privilege qualification corrected by C005 | Apache-2.0; declared rust-version 1.78, workspace MSRV check passed on 1.89.0; structured `Round`/`ProbeStatus`/`ProbeComplete`/`CompletionReason`/`Error` API preserving silent `Awaited` attempts; no reverse-DNS crate and no second `netdev` in its tree. Post-closure hosted evidence proved the original privilege assumption was wrong: Trippy 0.13 documents unprivileged mode as macOS-only; Linux requires root/`CAP_NET_RAW` and Windows requires an elevated token. C005 owns platform-aware privilege selection/normalization and hosted requalification. Exact pin remains. Known bounds: `Classic` supports only `FixedSrc`/`FixedDest` (adapter uses per-trace unique `FixedSrc`); round completion follows backend loop wakeups (engine fixes 100 ms read granularity); `IcmpPacketCode`/`ProbeFailed` lack public exports. |
 | Tokio `UdpSocket` + `socket2` 0.5/0.6 | insufficient for M006 | No `IP_MTU_DISCOVER`/`IP_DONTFRAGMENT`/`IP_RECVERR` surface in either crate at the M006 survey; connected-socket ICMP errors carry no MTU data, so only timeout heuristics would remain. |
 | `nix` 0.29 | insufficient for M006 | Safe `Ipv4RecvErr`/`Ipv6RecvErr` plus errqueue parsing exist, but no `IpMtuDiscover` setter; DF control (required so probes are not silently fragmented) is missing. |
 | macOS / Windows PMTU feedback | explicit-unsupported direction for M006 | Neither platform delivers packet-too-big feedback to unprivileged sockets (macOS folds it into the route cache; Windows does not deliver it); only timeout heuristics would remain, which the milestone forbids. |
@@ -143,10 +143,10 @@ M003 ICMP echo   M004 direct UDP
        \             /
         \           /
          v         v
-       M005 traceroute/path
+       M005 traceroute/path [HISTORICAL CLOSURE; C005 CORRECTIVE REQUIRED]
               |
               v
-       M006 active PMTU
+       M006 active PMTU [BLOCKED INDEPENDENTLY ON PMTU CONTROL GAP]
 ```
 
 M001 hard-depends on Phase 7 and ADR-0003. M002 hard-depends on M001. M003/M004 hard-depend only on M001; they soft-depend on M002 and are parallel branches after M001, not a sequence. M005 hard-depends on M001 plus backend qualification; M003/M004 are soft dependencies. M006 hard-depends on M001 and should follow M002/M004/M005 so route/datagram/path test seams exist. The Phase 9 routed-datagram boundary remains separate from this graph.
@@ -172,6 +172,8 @@ Add direct UDP send/receive diagnostics with bounded payload/capture and honest 
 ### M005 — Traceroute/path diagnostics
 
 Add structured ordered hop/attempt evidence without terminal scraping, with bounded hops/attempts and explicit privilege/termination states.
+
+Current disposition: historical implementation/closure exists, but post-closure hosted CI exposed an invalid platform privilege assumption. C005 is the current authority for restoring truthful Linux/macOS/Windows qualification without changing the schema.
 
 ### M006 — Active path-MTU discovery
 
@@ -237,6 +239,32 @@ Closure: `plans/closure/native-path-host-diagnostics-corrective/004-status.md`.
 C004 completed exact 0..=1024 on-wire payload semantics without weakening reply or ICMP-error correlation, wired truthful responder identity on Unix/Linux/Windows where available, retained structured Time Exceeded versus local timeout semantics, and preserved the tested commit in durable fork branch `eggprobe/c004-icmp-semantics-and-durable-handoff` at `040771431b6e0b3f66bb17629636c8a3b4956b45` with upstream PR https://github.com/hankbao/ping-async/pull/9. C003 remains blocked on upstream acceptance/merge and publication of the qualified surface.
 
 
+### C005 — Traceroute privilege and hosted-platform qualification
+
+Status: ready.
+
+Plan: `plans/implementation/native-path-host-diagnostics-corrective/005-traceroute-privilege-and-hosted-qualification.md`
+
+Post-M005 hosted run `36138451900` on
+`0ce9597aa2acad9a61c45a70c3ffaf56333cf3d5` failed the live
+`eggprobe trace 127.0.0.1` CLI smoke on Ubuntu job `108082118033` and
+Windows job `108082118099`; macOS job `108082118186`, MSRV job
+`108082117794`, and audit job `108082117983` passed.
+
+The M005 adapter forces `trippy_core::PrivilegeMode::Unprivileged` on every
+platform. Trippy 0.13's own privilege guide states that unprivileged mode is
+supported only on macOS; Linux always requires privilege for the ICMP receive
+side of tracing (root/`CAP_NET_RAW`) and Windows requires an elevated token.
+The published `trippy-privilege 0.13.0` API provides the platform-aware
+discovery/acquisition seam needed by an embedding application.
+
+C005 must preserve the M005 structured hop model while making privilege
+selection truthful, mapping unavailable privilege to Eggprobe's existing
+`PermissionDenied` category, and replacing the invalid assumption that every
+ordinary hosted runner can complete a live loopback trace. M005's historical
+closure record remains immutable evidence of the original work; current
+qualification is corrective-required until C005 closes.
+
 ### C003 — Published ICMP backend adoption qualification
 
 Status: blocked on C004 closure, upstream acceptance/merge, and a crates.io publication containing the C004-qualified interface.
@@ -262,5 +290,6 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 | C003 published ICMP backend qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | pending | C004 closure + upstream acceptance/merge + published crates.io release |
 | M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | C004 + C003 closure |
 | M004 direct UDP service diagnostics | closed | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | `plans/closure/native-path-host-diagnostics/004-status.md` | — |
-| M005 traceroute/path diagnostics | closed | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | `plans/closure/native-path-host-diagnostics/005-status.md` | — |
-| M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | M004/M005 seams closed; M006 control survey (see §4) finds no qualifying DF/PTB controls and no Linux/netns validation environment in reach — execution stops here for reassessment |
+| M005 traceroute/path diagnostics | corrective required | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | historical: `plans/closure/native-path-host-diagnostics/005-status.md` | C005 hosted/platform privilege corrective |
+| C005 traceroute privilege and hosted-platform qualification | ready | `plans/implementation/native-path-host-diagnostics-corrective/005-traceroute-privilege-and-hosted-qualification.md` | pending | — |
+| M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | PMTU control survey (see §4) finds no qualifying DF/PTB controls and no Linux/netns validation environment in reach; C005 does not unblock that separate control gap |
