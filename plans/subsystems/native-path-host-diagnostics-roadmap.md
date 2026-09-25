@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001/M002/M004 closed, C001 closed, C002 corrective required, C004 ready, C003/M003 blocked, M005/M006 blocked
+Status: active planning; M001/M002/M004/M005 closed, C001 closed, C002 corrective required, C004 ready, C003/M003 blocked, M006 blocked
 
 Long-term references:
 
@@ -91,7 +91,8 @@ these dependencies and decisions:
 | `netroute` 0.4.0 | accepted for M002 | MIT; no declared `rust-version`; workspace MSRV check passed on 1.89.0; exposes structured read-only route entries on supported target builds. Enumeration is correlation evidence, not an authoritative policy-route lookup. |
 | `ping-async` 1.0.2 | rejected for M003 | Current crates.io version differs from the plan's noted 1.2.x line. Its public request API does not accept payload bytes/length and its reply exposes destination/status/RTT without a separate responder address. |
 | `ping-rs` 0.1.2 | rejected alternative for M003 | MIT, no declared MSRV. The async Windows path unwraps ICMP handle creation and can panic on permission/OS failure; its OS error includes display text. This does not meet no-panic, safe-normalization requirements. |
-| `tracert` 0.12.0 | rejected for M005 | MIT, edition 2024; public results omit silent per-hop attempts, deduplicate responders, and reverse-resolve the destination unconditionally. It also requires a separate `netdev` 0.41.x alongside 0.46.3. |
+| `tracert` 0.12.0 | rejected for M005 | MIT; edition 2024; public results omit silent per-hop attempts, deduplicate responders, and reverse-resolve the destination unconditionally. It also requires a separate `netdev` 0.41.x alongside 0.46.3. Still the latest published version at M005 execution; rejection retained. |
+| `trippy-core` 0.13.0 | accepted for M005 | Apache-2.0; declared rust-version 1.78, workspace MSRV check passed on 1.89.0; structured `Round`/`ProbeStatus`/`ProbeComplete`/`CompletionReason`/`Error` API preserving silent `Awaited` attempts; no reverse-DNS crate and no second `netdev` in its tree; unprivileged UDP mode needs no capabilities; exact pin with lockfile. Known bounds: `Classic` supports only `FixedSrc`/`FixedDest` (adapter uses per-trace unique `FixedSrc`); round completion follows backend loop wakeups (engine fixes 100 ms read granularity); `IcmpPacketCode`/`ProbeFailed` lack public exports (extraction arms for those pinned by live evidence + review). |
 
 The dependency audit found no new vulnerability; it reported one pre-existing
 allowed unmaintained-crate advisory (`paste` via existing dependencies).
@@ -258,5 +259,5 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 | C003 published ICMP backend qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | pending | C004 closure + upstream acceptance/merge + published crates.io release |
 | M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | C004 + C003 closure |
 | M004 direct UDP service diagnostics | closed | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | `plans/closure/native-path-host-diagnostics/004-status.md` | — |
-| M005 traceroute/path diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | pending | `tracert` 0.12.0 loses silent attempts, deduplicates hops, reverse-resolves by default, and duplicates `netdev` |
+| M005 traceroute/path diagnostics | closed | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | `plans/closure/native-path-host-diagnostics/005-status.md` | — |
 | M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | M004 and M005 seams remain open; safe platform controls still require qualification |

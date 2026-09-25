@@ -1,6 +1,6 @@
 # Native M005 — Traceroute and Path Diagnostics
 
-Status: blocked — tracer backend qualification
+Status: closed
 
 Repository baseline: `8055730df76f187d94ff83b810d93cb935bb8c37`
 
