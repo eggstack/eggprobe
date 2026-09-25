@@ -1,6 +1,8 @@
 # Native Path and Host Diagnostics Corrective C007 — Trippy #1793 Windows Fix Qualification and Durable Upstream Handoff
 
-Status: ready for handoff
+Status: closed (Case C — distinct remaining defect; see closure)
+
+Closure: `plans/closure/native-path-host-diagnostics-corrective/007-status.md`
 
 Repository baseline: `f2167ee9332d94bf71c06babc183d87b059cc310`
 

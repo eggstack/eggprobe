@@ -1,6 +1,6 @@
 # Native Path and Host Diagnostics Roadmap
 
-Status: active planning; M001/M002/M004 closed, M005 conditionally closed via C005; C001/C004/C005 closed, C002 corrective required, C003/M003 blocked, C007 ready, C006 blocked on C007 + publication, M006 blocked
+Status: active planning; M001/M002/M004 closed, M005 conditionally closed via C005; C001/C004/C005/C007 closed, C002 corrective required, C003/M003 blocked, C006 blocked on #1881 fix publication, M006 blocked
 
 Long-term references:
 
@@ -144,16 +144,16 @@ M003 ICMP echo   M004 direct UDP
         \           /
          v         v
        M005 traceroute/path [CONDITIONALLY CLOSED VIA C005]
-              |
+               |
        +------+-------------------+
        |                          |
        v                          v
 C007 #1793 fix qualification   M006 active PMTU
-[READY]                        [BLOCKED INDEPENDENTLY]
+[CLOSED CASE C, #1881 FILED]   [BLOCKED INDEPENDENTLY]
        |
        v
 C006 Windows live requalification
-[BLOCKED ON C007 + PUBLISHED FIX]
+[BLOCKED ON #1881 FIX PUBLICATION]
 ```
 
 M001 hard-depends on Phase 7 and ADR-0003. M002 hard-depends on M001. M003/M004 hard-depend only on M001; they soft-depend on M002 and are parallel branches after M001, not a sequence. M005 hard-depends on M001 plus backend qualification; M003/M004 are soft dependencies. M006 hard-depends on M001 and should follow M002/M004/M005 so route/datagram/path test seams exist. The Phase 9 routed-datagram boundary remains separate from this graph.
@@ -273,9 +273,11 @@ hardening that keeps closed-port UDP evidence deterministic on Windows.
 
 ### C007 — Trippy #1793 Windows fix qualification and upstream handoff
 
-Status: ready.
+Status: closed (Case C — distinct remaining defect).
 
 Plan: `plans/implementation/native-path-host-diagnostics-corrective/007-trippy-1793-windows-fix-qualification-and-upstream-handoff.md`
+
+Closure: `plans/closure/native-path-host-diagnostics-corrective/007-status.md`.
 
 Post-C005 research found that the crash signature is already tracked upstream
 as Trippy issue #1793. That issue records the same
@@ -288,25 +290,32 @@ temporary `&mut 0`; commit
 0.14.0 and is present on current master `c0c758eb1069151eafa6bd8227bb446c2b4d1506`,
 but 0.13.0 remains the latest published release.
 
-C007 must prove that this exact upstream fix resolves Eggprobe's C005 elevated
-Windows reproducer without changing production dependencies. It owns a durable,
-isolated repro/evidence harness and the upstream handoff. A new upstream issue
-is filed only if the #1793 fix or current master still reproduces a distinct
-failure.
+C007 proved that this exact upstream fix does NOT resolve Eggprobe's C005
+elevated Windows reproducer: the durable isolated harness
+(`tools/repros/trippy-windows-1793/`, isolated `workflow_dispatch` evidence
+job, runs `36166315873`/`36167102544` on elevated Windows Server 2025 with
+Rust 1.89) shows registry 0.13.0 aborting 3/3 while the exact fix commit
+`0b3c85b` aborts 10/10 and master `c0c758e` aborts 10/10 with the
+byte-identical `UnknownExtension`-drop signature. C007 therefore filed the
+distinct-defect upstream report `https://github.com/fujiapple852/trippy/issues/1881`
+instead of binding C006 to #1793. Production pins and the C005 Windows
+refusal are unchanged.
 
 ### C006 — Windows trace re-qualification on fixed backend
 
-Status: blocked on C007 closure plus a published immutable upstream
-`trippy-core`/`trippy-privilege` release containing the C007-qualified
-#1793 fix or an explicitly reconciled equivalent.
+Status: blocked on a published immutable upstream
+`trippy-core`/`trippy-privilege` release containing the fix for **upstream
+issue #1881** (C007 proved a #1793-only release insufficient) or an
+explicitly reconciled equivalent.
 
 Plan: `plans/implementation/native-path-host-diagnostics-corrective/006-windows-trace-requalification-on-fixed-backend.md`
 
 C005 proved elevated Windows cannot execute on the published
 `trippy-core 0.13.0` and installed a version-pinned `Unsupported` refusal.
-C007 qualifies the already-landed upstream fix against the Eggprobe reproducer.
-C006 re-enables and live-qualifies the privileged Windows path only after that
-fix is published and consumed as an exact crates.io pin — never a production
+C007 qualified the already-landed #1793 fix against the Eggprobe reproducer
+and found it insufficient, filing #1881 instead.
+C006 re-enables and live-qualifies the privileged Windows path only after the
+#1881 fix is published and consumed as an exact crates.io pin — never a production
 Git SHA, fork, or vendored patch. M005's Windows disposition stays refusal
 until C006 closes.
 
@@ -337,6 +346,6 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 | M004 direct UDP service diagnostics | closed | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | `plans/closure/native-path-host-diagnostics/004-status.md` | — |
 | M005 traceroute/path diagnostics | conditionally closed | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | historical: `plans/closure/native-path-host-diagnostics/005-status.md`; current: `plans/closure/native-path-host-diagnostics-corrective/005-status.md` | Linux/macOS live-qualified by C005; Windows live execution blocked on upstream backend fix (C006) |
 | C005 traceroute privilege and hosted-platform qualification | closed | `plans/implementation/native-path-host-diagnostics-corrective/005-traceroute-privilege-and-hosted-qualification.md` | `plans/closure/native-path-host-diagnostics-corrective/005-status.md` | Qualifying hosted run `36156303047` on `53226a3` fully green |
-| C007 Trippy #1793 Windows fix qualification/upstream handoff | ready | `plans/implementation/native-path-host-diagnostics-corrective/007-trippy-1793-windows-fix-qualification-and-upstream-handoff.md` | pending | — |
-| C006 Windows trace re-qualification on fixed backend | blocked | `plans/implementation/native-path-host-diagnostics-corrective/006-windows-trace-requalification-on-fixed-backend.md` | pending | C007 closure + published immutable Trippy release containing the qualified #1793 fix/equivalent |
+| C007 Trippy #1793 Windows fix qualification/upstream handoff | closed (Case C) | `plans/implementation/native-path-host-diagnostics-corrective/007-trippy-1793-windows-fix-qualification-and-upstream-handoff.md` | `plans/closure/native-path-host-diagnostics-corrective/007-status.md` | #1793 fix proven insufficient (fix 10/10 + master 10/10 aborts); distinct defect filed as upstream #1881 |
+| C006 Windows trace re-qualification on fixed backend | blocked | `plans/implementation/native-path-host-diagnostics-corrective/006-windows-trace-requalification-on-fixed-backend.md` | pending | C007 closed (Case C); requires a published immutable Trippy release containing the fix for upstream #1881 |
 | M006 active path-MTU discovery | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | pending | PMTU control survey (see §4) finds no qualifying DF/PTB controls and no Linux/netns validation environment in reach; C005 does not unblock that separate control gap |
