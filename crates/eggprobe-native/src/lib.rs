@@ -371,19 +371,128 @@ pub struct TraceSummary {
     pub termination: TraceTerminationSummary,
 }
 
-/// Trace one bounded direct path with unprivileged UDP probes.
+/// Fixed machine-visible message for traces denied by host privilege policy.
+/// Dependency and operating-system error text is never forwarded into
+/// reports.
+pub const TRACE_PERMISSION_MESSAGE: &str = "UDP trace requires additional local privilege";
+
+/// Whether the current host lets this process execute a UDP trace.
+///
+/// `Executable` means the backend mode selected for this host can run here:
+/// unprivileged mode on macOS, or privileged mode where the required local
+/// privilege is already effective. `PermissionDenied` means the host requires
+/// a privilege this process does not hold. This derives from the same
+/// decision as [`trace_path`] so host-aware tests stay truthful without
+/// hard-coding per-OS expectations.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TraceCapability {
+    /// The trace backend mode selected for this host can execute here.
+    Executable,
+    /// Required local privilege is unavailable to this process.
+    PermissionDenied,
+}
+
+/// Report the current host's trace capability without sending any probe.
+#[must_use]
+pub fn trace_capability() -> TraceCapability {
+    match current_privilege_mode() {
+        Ok(_) => TraceCapability::Executable,
+        Err(_) => TraceCapability::PermissionDenied,
+    }
+}
+
+/// Backend privilege mode selected for one trace. Trippy's privilege types
+/// never cross this crate's public boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TracePrivilegeMode {
+    /// Backend unprivileged mode, valid only where upstream documents it.
+    Unprivileged,
+    /// Backend privileged mode, valid only with already-effective privilege.
+    Privileged,
+}
+
+/// Already-effective host privilege relevant to tracing, kept injectable so
+/// mode selection is deterministically testable without raw-socket privilege.
+///
+/// Only already-effective privilege is consulted. `Privilege::needs_privileges`
+/// is deliberately not used: whether the backend supports unprivileged mode
+/// follows upstream documentation per target (today: macOS only for Trippy
+/// 0.13 UDP), never runtime inference — inferring support was the M005 defect.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PrivilegeFacts {
+    /// The required local privilege is already effective (Linux effective
+    /// `CAP_NET_RAW`, or an elevated token on Windows).
+    has_privileges: bool,
+}
+
+/// Pure privilege-mode policy shared by production and tests.
+///
+/// - `unprivileged_supported` is true only where the backend documents
+///   unprivileged tracing;
+/// - `None` facts model a discovery failure and deny with the same bounded
+///   category instead of leaking dependency text;
+/// - a mere privilege deficit is always `PermissionDenied`, never
+///   `Unsupported`: the trace family itself is supported, the host simply
+///   withholds the required privilege.
+fn select_privilege_mode(
+    unprivileged_supported: bool,
+    facts: Option<PrivilegeFacts>,
+) -> Result<TracePrivilegeMode, NativeErrorKind> {
+    if unprivileged_supported {
+        return Ok(TracePrivilegeMode::Unprivileged);
+    }
+    if facts.is_some_and(|facts| facts.has_privileges) {
+        Ok(TracePrivilegeMode::Privileged)
+    } else {
+        Err(NativeErrorKind::PermissionDenied)
+    }
+}
+
+/// Decide the backend privilege mode from actual host capability.
+///
+/// macOS uses the backend's documented unprivileged mode. Everywhere else the
+/// required privilege must already be effective. Discovery is read-only —
+/// Eggprobe never acquires, raises, clears, or otherwise mutates privilege
+/// state (no `sudo`, no file-capability changes, no elevation prompts), so
+/// concurrent traces cannot race on process- or thread-wide capability sets
+/// and no privilege-drop lifecycle is owed. A discovery failure denies with
+/// the same bounded category instead of leaking dependency text.
+fn current_privilege_mode() -> Result<TracePrivilegeMode, NativeErrorKind> {
+    // Unprivileged support follows backend documentation per target (Trippy
+    // 0.13 documents it for macOS only); discovery runs solely where a
+    // privileged decision needs it.
+    if cfg!(target_os = "macos") {
+        return Ok(TracePrivilegeMode::Unprivileged);
+    }
+    select_privilege_mode(
+        false,
+        trippy_privilege::Privilege::discover()
+            .ok()
+            .map(|privilege| PrivilegeFacts {
+                has_privileges: privilege.has_privileges(),
+            }),
+    )
+}
+
+/// Trace one bounded direct path with UDP probes.
+///
+/// macOS uses the backend's documented unprivileged mode. Linux and Windows
+/// require already-effective local privilege (Linux effective `CAP_NET_RAW`,
+/// Windows an elevated token) and report [`NativeErrorKind::PermissionDenied`]
+/// otherwise; lack of privilege is an execution failure, never a silent hop.
 ///
 /// Each round sends one probe per TTL from 1 through `max_hops` using the
 /// classic (non-Paris) strategy and a fixed traditional destination port.
 /// Silent TTLs are preserved as [`TraceProbeOutcome::TimedOut`] observations,
-/// never as engine failures. The blocking backend runs on a dedicated thread;
-/// `timeout` bounds the wait, and expiry keeps the rounds completed so far
-/// with `completed` set to false. No reverse-DNS lookup is performed.
+/// never as engine failures. Privilege discovery and channel construction
+/// share one dedicated blocking worker; `timeout` bounds the wait, and expiry
+/// keeps the rounds completed so far with `completed` set to false. No
+/// reverse-DNS lookup is performed.
 ///
 /// # Errors
 ///
-/// Returns a bounded native error when the tracer cannot be built or the
-/// trace fails locally. Permission denial is reported explicitly.
+/// Returns a bounded native error when required privilege is unavailable, the
+/// tracer cannot be built, or the trace fails locally.
 ///
 /// # Panics
 ///
@@ -398,37 +507,47 @@ pub async fn trace_path(
     timeout: std::time::Duration,
 ) -> Result<TraceReport, NativeError> {
     let rounds = usize::from(rounds.max(1));
-    let tracer = trippy_core::Builder::new(target)
-        .privilege_mode(trippy_core::PrivilegeMode::Unprivileged)
-        .protocol(trippy_core::Protocol::Udp)
-        .multipath_strategy(trippy_core::MultipathStrategy::Classic)
-        // Classic varies the destination port per probe, so the fixed
-        // source port is the per-tracer identity and must be unique.
-        .port_direction(trippy_core::PortDirection::FixedSrc(next_trace_src_port()))
-        .first_ttl(1)
-        .max_ttl(max_hops.max(1))
-        .max_rounds(Some(rounds))
-        .min_round_duration(std::time::Duration::ZERO)
-        .read_timeout(read_timeout)
-        .max_round_duration(max_round_duration)
-        .build()
-        .map_err(|error| map_trace_error(&error))?;
+    let max_ttl = max_hops.max(1);
+    let src_port = next_trace_src_port();
     let collected = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
     let worker_collected = std::sync::Arc::clone(&collected);
     let worker = tokio::task::spawn_blocking(move || {
-        tracer.run_with(|round| {
-            worker_collected
-                .lock()
-                .expect("trace rounds are pushed under a short-lived lock")
-                .push(observe_round(target, round));
-        })
+        let mode = current_privilege_mode().map_err(|kind| NativeError { kind })?;
+        let tracer = trippy_core::Builder::new(target)
+            .privilege_mode(match mode {
+                TracePrivilegeMode::Unprivileged => trippy_core::PrivilegeMode::Unprivileged,
+                TracePrivilegeMode::Privileged => trippy_core::PrivilegeMode::Privileged,
+            })
+            // Eggprobe never acquires privilege (discovery is read-only), so
+            // there is nothing to drop: enabling the backend drop would clear
+            // an effective set the tracer did not raise.
+            .drop_privileges(false)
+            .protocol(trippy_core::Protocol::Udp)
+            .multipath_strategy(trippy_core::MultipathStrategy::Classic)
+            // Classic varies the destination port per probe, so the fixed
+            // source port is the per-tracer identity and must be unique.
+            .port_direction(trippy_core::PortDirection::FixedSrc(src_port))
+            .first_ttl(1)
+            .max_ttl(max_ttl)
+            .max_rounds(Some(rounds))
+            .min_round_duration(std::time::Duration::ZERO)
+            .read_timeout(read_timeout)
+            .max_round_duration(max_round_duration)
+            .build()
+            .map_err(|error| map_trace_error(&error))?;
+        tracer
+            .run_with(|round| {
+                worker_collected
+                    .lock()
+                    .expect("trace rounds are pushed under a short-lived lock")
+                    .push(observe_round(target, round));
+            })
+            .map_err(|error| map_trace_error(&error))
     });
     if let Ok(joined) = tokio::time::timeout(timeout, worker).await {
-        joined
-            .map_err(|_| NativeError {
-                kind: NativeErrorKind::Io,
-            })?
-            .map_err(|error| map_trace_error(&error))?;
+        joined.map_err(|_| NativeError {
+            kind: NativeErrorKind::Io,
+        })??;
         let rounds = std::mem::take(
             &mut *collected
                 .lock()
@@ -843,36 +962,30 @@ mod tests {
         }
     }
 
-    /// Collect raw backend probe states for one loopback round. The backend
-    /// keeps `IcmpPacketCode`/`ProbeFailed` out of its public exports, so
-    /// extraction coverage for reply-bearing probes comes from live values
-    /// (possibly with the responder rewritten) rather than literals.
-    fn live_probe_states(target: IpAddr) -> Vec<trippy_core::ProbeStatus> {
-        let collected = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-        let worker_collected = std::sync::Arc::clone(&collected);
-        let tracer = trippy_core::Builder::new(target)
-            .privilege_mode(trippy_core::PrivilegeMode::Unprivileged)
-            .protocol(trippy_core::Protocol::Udp)
-            .multipath_strategy(trippy_core::MultipathStrategy::Classic)
-            .port_direction(trippy_core::PortDirection::FixedSrc(next_trace_src_port()))
-            .first_ttl(1)
-            .max_ttl(1)
-            .max_rounds(Some(1))
-            .min_round_duration(std::time::Duration::ZERO)
-            .read_timeout(std::time::Duration::from_millis(300))
-            .max_round_duration(std::time::Duration::from_secs(3))
-            .build()
-            .unwrap();
-        tracer
-            .run_with(|round| {
-                worker_collected
-                    .lock()
-                    .unwrap()
-                    .extend(round.probes.iter().cloned());
-            })
-            .unwrap();
-        let states = collected.lock().unwrap().clone();
-        states
+    /// Collect a reply-bearing backend probe state without touching the
+    /// network. `ProbeComplete` fields are public, but `IcmpPacketCode` is not
+    /// re-exported, so only the `NotApplicable` packet type is literally
+    /// constructible: a non-target responder exercises the `Reply` arm and a
+    /// target responder exercises `DestinationReached`. The
+    /// `TimeExceeded`/`Unreachable`-code extraction arms stay pinned by
+    /// review plus the structured summary tests below.
+    fn complete_probe(ttl: u8, host: IpAddr) -> trippy_core::ProbeStatus {
+        trippy_core::ProbeStatus::Complete(trippy_core::ProbeComplete {
+            sequence: trippy_core::Sequence(2),
+            identifier: trippy_core::TraceId(0),
+            src_port: trippy_core::Port(43534),
+            dest_port: trippy_core::Port(33434),
+            ttl: trippy_core::TimeToLive(ttl),
+            round: trippy_core::RoundId(0),
+            sent: std::time::SystemTime::UNIX_EPOCH,
+            host,
+            received: std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_millis(1),
+            icmp_packet_type: trippy_core::IcmpPacketType::NotApplicable,
+            tos: None,
+            expected_udp_checksum: None,
+            actual_udp_checksum: None,
+            extensions: None,
+        })
     }
 
     #[test]
@@ -934,17 +1047,8 @@ mod tests {
     #[test]
     fn trace_summary_keeps_silent_intermediate_hop_as_evidence() {
         let target: IpAddr = "127.0.0.1".parse().unwrap();
-        let mut reached = live_probe_states(target);
-        assert!(!reached.is_empty());
-        let trippy_core::ProbeStatus::Complete(ref mut complete) = reached[0] else {
-            panic!("loopback must answer");
-        };
-        complete.ttl = trippy_core::TimeToLive(3);
-        let probes = vec![
-            silent_probe(2),
-            silent_probe(2),
-            trippy_core::ProbeStatus::Complete(complete.clone()),
-        ];
+        let reached = complete_probe(3, target);
+        let probes = vec![silent_probe(2), silent_probe(2), reached];
         let round = trippy_core::Round::new(
             &probes,
             trippy_core::TimeToLive(3),
@@ -987,31 +1091,26 @@ mod tests {
     fn trace_summary_reports_unreachable_path_explicitly() {
         let target: IpAddr = "203.0.113.9".parse().unwrap();
         let router: IpAddr = "192.168.182.1".parse().unwrap();
-        let mut states = live_probe_states("127.0.0.1".parse().unwrap());
-        assert!(!states.is_empty());
-        let trippy_core::ProbeStatus::Complete(ref mut complete) = states[0] else {
-            panic!("loopback must answer");
-        };
-        // A reply from any non-target address with unreachable semantics is
-        // router-reported unreachability, not a reached destination.
-        complete.host = router;
-        complete.ttl = trippy_core::TimeToLive(2);
-        let observed = observe_probe(
-            target,
-            &trippy_core::ProbeStatus::Complete(complete.clone()),
-        );
-        let unreachable_observation = observed.unwrap();
-        assert_eq!(
-            unreachable_observation.outcome,
-            TraceProbeOutcome::DestinationUnreachable
-        );
-        assert_eq!(unreachable_observation.responder, Some(router));
+        // A non-target responder with a non-ICMP reply is router-reported
+        // evidence, not a reached destination. The `Unreachable`-code
+        // extraction arm itself stays review-pinned (`IcmpPacketCode` has no
+        // public constructor); termination below proves the summary honors a
+        // `DestinationUnreachable` attempt wherever it was extracted.
+        let observed = observe_probe(target, &complete_probe(2, router)).unwrap();
+        assert_eq!(observed.outcome, TraceProbeOutcome::Reply);
+        assert_eq!(observed.responder, Some(router));
+        assert_eq!(observed.rtt_micros, Some(1000));
         let report = TraceReport {
             rounds: vec![TraceRoundObservation {
                 reason: TraceRoundReason::TimeLimit,
                 probes: vec![
                     observation(1, Some(router), Some(5000), TraceProbeOutcome::TimeExceeded),
-                    unreachable_observation,
+                    observation(
+                        2,
+                        Some(router),
+                        Some(1100),
+                        TraceProbeOutcome::DestinationUnreachable,
+                    ),
                 ],
             }],
             completed: true,
@@ -1098,16 +1197,15 @@ mod tests {
     }
 
     #[test]
-    fn trace_probe_maps_live_reply_and_skips_unsent_probes() {
+    fn trace_probe_maps_constructed_reply_and_skips_unsent_probes() {
         let target: IpAddr = "127.0.0.1".parse().unwrap();
-        let states = live_probe_states(target);
-        assert!(!states.is_empty());
-        let observed = observe_probe(target, &states[0]).unwrap();
+        let state = complete_probe(1, target);
+        let observed = observe_probe(target, &state).unwrap();
         assert_eq!(observed.outcome, TraceProbeOutcome::DestinationReached);
         assert_eq!(observed.responder, Some(target));
-        assert!(observed.rtt_micros.is_some());
+        assert_eq!(observed.rtt_micros, Some(1000));
         let probes = vec![
-            states[0].clone(),
+            state,
             trippy_core::ProbeStatus::NotSent,
             trippy_core::ProbeStatus::Skipped,
         ];
@@ -1123,18 +1221,13 @@ mod tests {
     #[test]
     fn trace_probe_tolerates_clock_skew_without_rtt() {
         let target: IpAddr = "127.0.0.1".parse().unwrap();
-        let mut states = live_probe_states(target);
-        assert!(!states.is_empty());
-        let trippy_core::ProbeStatus::Complete(ref mut complete) = states[0] else {
-            panic!("loopback must answer");
+        let trippy_core::ProbeStatus::Complete(mut complete) = complete_probe(1, target) else {
+            panic!("constructed fixture must complete");
         };
         complete.received = std::time::SystemTime::UNIX_EPOCH;
         complete.sent = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1);
-        let observed = observe_probe(
-            target,
-            &trippy_core::ProbeStatus::Complete(complete.clone()),
-        )
-        .unwrap();
+        let observed =
+            observe_probe(target, &trippy_core::ProbeStatus::Complete(complete)).unwrap();
         assert_eq!(observed.rtt_micros, None);
         assert_eq!(observed.outcome, TraceProbeOutcome::DestinationReached);
     }
@@ -1170,49 +1263,141 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn trace_path_reaches_loopback_without_privilege() {
-        let target: IpAddr = "127.0.0.1".parse().unwrap();
-        let report = trace_path(
-            target,
-            3,
-            1,
-            std::time::Duration::from_millis(300),
-            std::time::Duration::from_secs(3),
-            std::time::Duration::from_secs(10),
-        )
-        .await
-        .unwrap();
-        assert!(report.completed);
-        let summary = summarize_trace(target, 3, &report);
-        assert_eq!(
-            summary.termination,
-            TraceTerminationSummary::DestinationReached
+    #[test]
+    fn trace_privilege_selection_uses_unprivileged_mode_where_documented() {
+        // macOS-style selection: documented unprivileged support wins without
+        // consulting host privilege facts.
+        let without = select_privilege_mode(false, None);
+        assert_eq!(without, Err(NativeErrorKind::PermissionDenied));
+        let macos = select_privilege_mode(
+            true,
+            Some(PrivilegeFacts {
+                has_privileges: false,
+            }),
         );
-        assert!(!summary.hops.is_empty());
-        assert_eq!(summary.hops[0].hop, 1);
-        assert_eq!(summary.hops[0].attempts[0].responder, Some(target));
+        assert_eq!(macos, Ok(TracePrivilegeMode::Unprivileged));
+    }
+
+    #[test]
+    fn trace_privilege_selection_requires_effective_privilege_elsewhere() {
+        // Linux privilege available: permitted/effective `CAP_NET_RAW`
+        // already present selects the privileged backend mode.
+        let granted = select_privilege_mode(
+            false,
+            Some(PrivilegeFacts {
+                has_privileges: true,
+            }),
+        );
+        assert_eq!(granted, Ok(TracePrivilegeMode::Privileged));
+        // Linux/Windows privilege unavailable: typed denial, never a silent
+        // fallback or a generic failure.
+        let denied = select_privilege_mode(
+            false,
+            Some(PrivilegeFacts {
+                has_privileges: false,
+            }),
+        );
+        assert_eq!(denied, Err(NativeErrorKind::PermissionDenied));
+    }
+
+    #[test]
+    fn trace_privilege_selection_denies_boundedly_on_discovery_failure() {
+        // A discovery error (facts unavailable) denies with the same bounded
+        // category; no dependency text escapes and the deficit never becomes
+        // `Unsupported`.
+        let denied = select_privilege_mode(false, None);
+        assert_eq!(denied, Err(NativeErrorKind::PermissionDenied));
+        assert_ne!(denied, Err(NativeErrorKind::Unsupported));
+    }
+
+    #[test]
+    fn trace_capability_agrees_with_privilege_decision() {
+        // The public capability oracle reports exactly what `trace_path`
+        // would decide: executable where the mode selection succeeds.
+        let expected = match current_privilege_mode() {
+            Ok(_) => TraceCapability::Executable,
+            Err(_) => TraceCapability::PermissionDenied,
+        };
+        assert_eq!(trace_capability(), expected);
     }
 
     #[tokio::test]
-    async fn trace_path_reaches_ipv6_loopback_without_privilege() {
+    async fn trace_path_reaches_loopback_when_executable() {
+        let target: IpAddr = "127.0.0.1".parse().unwrap();
+        match trace_capability() {
+            TraceCapability::Executable => {
+                let report = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .unwrap();
+                assert!(report.completed);
+                let summary = summarize_trace(target, 3, &report);
+                assert_eq!(
+                    summary.termination,
+                    TraceTerminationSummary::DestinationReached
+                );
+                assert!(!summary.hops.is_empty());
+                assert_eq!(summary.hops[0].hop, 1);
+                assert_eq!(summary.hops[0].attempts[0].responder, Some(target));
+            }
+            TraceCapability::PermissionDenied => {
+                let error = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .expect_err("trace without privilege must deny, not hang");
+                assert_eq!(error.kind, NativeErrorKind::PermissionDenied);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn trace_path_reaches_ipv6_loopback_when_executable() {
         let target: IpAddr = "::1".parse().unwrap();
-        let report = trace_path(
-            target,
-            3,
-            1,
-            std::time::Duration::from_millis(300),
-            std::time::Duration::from_secs(3),
-            std::time::Duration::from_secs(10),
-        )
-        .await
-        .unwrap();
-        assert!(report.completed);
-        let summary = summarize_trace(target, 3, &report);
-        assert_eq!(
-            summary.termination,
-            TraceTerminationSummary::DestinationReached
-        );
+        match trace_capability() {
+            TraceCapability::Executable => {
+                let report = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .unwrap();
+                assert!(report.completed);
+                let summary = summarize_trace(target, 3, &report);
+                assert_eq!(
+                    summary.termination,
+                    TraceTerminationSummary::DestinationReached
+                );
+            }
+            TraceCapability::PermissionDenied => {
+                let error = trace_path(
+                    target,
+                    3,
+                    1,
+                    std::time::Duration::from_millis(300),
+                    std::time::Duration::from_secs(3),
+                    std::time::Duration::from_secs(10),
+                )
+                .await
+                .expect_err("trace without privilege must deny, not hang");
+                assert_eq!(error.kind, NativeErrorKind::PermissionDenied);
+            }
+        }
     }
 
     #[tokio::test]

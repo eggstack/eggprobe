@@ -477,7 +477,15 @@ impl ProbeEngine {
                 }
                 eggprobe_native::NativeErrorKind::Io => DiagnosticErrorKind::Io,
             };
-            simple_error(kind, DiagnosticStage::HopProbe, "UDP trace failed")
+            // Privilege denial carries its own fixed message so operators can
+            // distinguish a host policy refusal from a local failure without
+            // ever receiving dependency or OS error text.
+            let message = if kind == DiagnosticErrorKind::PermissionDenied {
+                eggprobe_native::TRACE_PERMISSION_MESSAGE
+            } else {
+                "UDP trace failed"
+            };
+            simple_error(kind, DiagnosticStage::HopProbe, message)
         })?;
         let summary = eggprobe_native::summarize_trace(destination, max_hops, &report);
         let termination = trace_termination(report.completed, summary.termination);

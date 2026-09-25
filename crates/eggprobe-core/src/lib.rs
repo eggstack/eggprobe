@@ -29,4 +29,5 @@ pub use domain::route::{EggressRoute, RouteSpec};
 pub use domain::target::{TargetError, TargetSpec};
 pub use domain::timing::{DurationMicros, PhaseTiming, Timing};
 pub use domain::version::{SchemaVersion, ToolVersion, VersionParseError};
+pub use eggprobe_native::{trace_capability, TraceCapability};
 pub use engine::{ProbeEngine, TargetPolicy};

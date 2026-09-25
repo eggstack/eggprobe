@@ -84,16 +84,62 @@ fn trace_command_reaches_loopback_with_structured_hops() {
         .args(["trace", "127.0.0.1", "--max-hops", "3", "--json"])
         .output()
         .unwrap();
-    assert!(output.status.success());
-    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
-    assert_eq!(value["probes"][0]["kind"], "trace");
-    assert_eq!(value["probes"][0]["evidence"]["kind"], "trace");
-    assert_eq!(
-        value["probes"][0]["evidence"]["data"]["termination"],
-        "destination_reached"
-    );
-    assert_eq!(value["probes"][0]["evidence"]["data"]["hops"][0]["hop"], 1);
-    assert!(output.stderr.is_empty());
+    // Bounded diagnostic context: a red smoke must show what the binary
+    // actually emitted instead of hiding behind a bare status assertion.
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap_or_else(|_| {
+        panic!(
+            "trace stdout was not machine JSON (status={:?}, stdout={:?}, stderr={:?})",
+            output.status.code(),
+            bounded(&stdout),
+            bounded(&stderr)
+        )
+    });
+    match eggprobe_core::trace_capability() {
+        eggprobe_core::TraceCapability::Executable => {
+            assert!(
+                output.status.success(),
+                "executable trace must succeed (stdout={:?}, stderr={:?})",
+                bounded(&stdout),
+                bounded(&stderr)
+            );
+            assert_eq!(value["probes"][0]["kind"], "trace");
+            assert_eq!(value["probes"][0]["evidence"]["kind"], "trace");
+            assert_eq!(
+                value["probes"][0]["evidence"]["data"]["termination"],
+                "destination_reached"
+            );
+            assert_eq!(value["probes"][0]["evidence"]["data"]["hops"][0]["hop"], 1);
+            assert!(output.stderr.is_empty());
+        }
+        eggprobe_core::TraceCapability::PermissionDenied => {
+            // Hosts without trace privilege must report the typed bounded
+            // denial, never a generic failure or empty output.
+            assert!(
+                !output.status.success(),
+                "denied trace must not report success (stdout={:?})",
+                bounded(&stdout)
+            );
+            assert_eq!(value["probes"][0]["error"]["kind"], "permission_denied");
+            assert_eq!(value["probes"][0]["error"]["stage"], "hop_probe");
+            assert_eq!(
+                value["probes"][0]["error"]["message"],
+                "UDP trace requires additional local privilege"
+            );
+            assert!(output.stderr.is_empty());
+        }
+    }
+}
+
+/// Truncate test-failure context so a red smoke stays readable.
+fn bounded(text: &str) -> String {
+    const LIMIT: usize = 1024;
+    if text.len() <= LIMIT {
+        text.to_string()
+    } else {
+        format!("{}…<truncated>", &text[..LIMIT])
+    }
 }
 
 #[test]

@@ -1,7 +1,7 @@
 use eggprobe_core::{
-    evaluate_assertions, AssertionKind, AssertionSpec, ExecutionPolicy, PlanValidationError,
-    ProbeEngine, ProbePlan, ProbeSpec, ReportStatus, RouteSpec, SchemaVersion, TargetPolicy,
-    TargetSpec,
+    evaluate_assertions, trace_capability, AssertionKind, AssertionSpec, ExecutionPolicy,
+    PlanValidationError, ProbeEngine, ProbePlan, ProbeSpec, ReportStatus, RouteSpec, SchemaVersion,
+    TargetPolicy, TargetSpec, TraceCapability,
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -390,31 +390,37 @@ async fn trace_probe_reaches_loopback_with_ordered_hop_evidence() {
             }],
         ))
         .await;
-    assert_eq!(report.status, ReportStatus::Ok);
-    let Some(eggprobe_core::ProbeEvidence::Trace(evidence)) = &report.probes[0].evidence else {
-        panic!("trace evidence missing");
-    };
-    assert_eq!(evidence.destination, "127.0.0.1");
-    assert_eq!(
-        evidence.termination,
-        eggprobe_core::TraceTermination::DestinationReached
-    );
-    assert!(!evidence.hops.is_empty());
-    assert!(evidence.hops.len() <= 4);
-    assert_eq!(evidence.hops[0].hop, 1);
-    assert_eq!(evidence.hops[0].attempts.len(), 1);
-    assert_eq!(
-        evidence.hops[0].attempts[0].responder.as_deref(),
-        Some("127.0.0.1")
-    );
-    assert_eq!(
-        evidence.hops[0].attempts[0].outcome,
-        eggprobe_core::NativeAttemptOutcome::DestinationReached
-    );
-    assert!(evidence.hops[0].attempts[0].rtt_micros.is_some());
-    // Hop order is TTL order and no reverse-DNS names appear.
-    let rendered = serde_json::to_string(&report).unwrap();
-    assert!(!rendered.contains("localhost"));
+    match trace_capability() {
+        TraceCapability::Executable => {
+            assert_eq!(report.status, ReportStatus::Ok);
+            let Some(eggprobe_core::ProbeEvidence::Trace(evidence)) = &report.probes[0].evidence
+            else {
+                panic!("trace evidence missing");
+            };
+            assert_eq!(evidence.destination, "127.0.0.1");
+            assert_eq!(
+                evidence.termination,
+                eggprobe_core::TraceTermination::DestinationReached
+            );
+            assert!(!evidence.hops.is_empty());
+            assert!(evidence.hops.len() <= 4);
+            assert_eq!(evidence.hops[0].hop, 1);
+            assert_eq!(evidence.hops[0].attempts.len(), 1);
+            assert_eq!(
+                evidence.hops[0].attempts[0].responder.as_deref(),
+                Some("127.0.0.1")
+            );
+            assert_eq!(
+                evidence.hops[0].attempts[0].outcome,
+                eggprobe_core::NativeAttemptOutcome::DestinationReached
+            );
+            assert!(evidence.hops[0].attempts[0].rtt_micros.is_some());
+            // Hop order is TTL order and no reverse-DNS names appear.
+            let rendered = serde_json::to_string(&report).unwrap();
+            assert!(!rendered.contains("localhost"));
+        }
+        TraceCapability::PermissionDenied => assert_trace_permission_denied(&report),
+    }
 }
 
 #[tokio::test]
@@ -428,14 +434,20 @@ async fn trace_probe_reaches_ipv6_loopback() {
             }],
         ))
         .await;
-    assert_eq!(report.status, ReportStatus::Ok);
-    let Some(eggprobe_core::ProbeEvidence::Trace(evidence)) = &report.probes[0].evidence else {
-        panic!("IPv6 trace evidence missing");
-    };
-    assert_eq!(
-        evidence.termination,
-        eggprobe_core::TraceTermination::DestinationReached
-    );
+    match trace_capability() {
+        TraceCapability::Executable => {
+            assert_eq!(report.status, ReportStatus::Ok);
+            let Some(eggprobe_core::ProbeEvidence::Trace(evidence)) = &report.probes[0].evidence
+            else {
+                panic!("IPv6 trace evidence missing");
+            };
+            assert_eq!(
+                evidence.termination,
+                eggprobe_core::TraceTermination::DestinationReached
+            );
+        }
+        TraceCapability::PermissionDenied => assert_trace_permission_denied(&report),
+    }
 }
 
 #[tokio::test]
@@ -449,14 +461,43 @@ async fn trace_probe_respects_configured_bounds() {
             }],
         ))
         .await;
-    assert_eq!(report.status, ReportStatus::Ok);
-    let Some(eggprobe_core::ProbeEvidence::Trace(evidence)) = &report.probes[0].evidence else {
-        panic!("trace evidence missing");
-    };
-    assert!(evidence.hops.len() <= 5);
-    assert!(evidence.hops.iter().all(|hop| hop.attempts.len() <= 2));
-    // Bounded output must stay machine-serializable.
-    serde_json::to_value(&report).unwrap();
+    match trace_capability() {
+        TraceCapability::Executable => {
+            assert_eq!(report.status, ReportStatus::Ok);
+            let Some(eggprobe_core::ProbeEvidence::Trace(evidence)) = &report.probes[0].evidence
+            else {
+                panic!("trace evidence missing");
+            };
+            assert!(evidence.hops.len() <= 5);
+            assert!(evidence.hops.iter().all(|hop| hop.attempts.len() <= 2));
+            // Bounded output must stay machine-serializable.
+            serde_json::to_value(&report).unwrap();
+        }
+        TraceCapability::PermissionDenied => assert_trace_permission_denied(&report),
+    }
+}
+
+/// Shared host-policy-aware denial assertion: where the runner lacks trace
+/// privilege, the loopback smoke must report the typed bounded denial at
+/// `HopProbe` — never a generic failure, timeout, or silent skip.
+fn assert_trace_permission_denied(report: &eggprobe_core::ProbeReport) {
+    assert_eq!(report.status, eggprobe_core::ReportStatus::Failed);
+    let error = report.probes[0]
+        .error
+        .as_ref()
+        .expect("denied trace must carry a diagnostic error");
+    assert_eq!(
+        error.kind,
+        eggprobe_core::DiagnosticErrorKind::PermissionDenied
+    );
+    assert_eq!(error.stage, eggprobe_core::DiagnosticStage::HopProbe);
+    assert_eq!(
+        error.message,
+        "UDP trace requires additional local privilege"
+    );
+    // No dependency or OS error text may leak into the machine report.
+    let rendered = serde_json::to_string(report).unwrap();
+    assert!(!rendered.contains("expression"));
 }
 
 #[tokio::test]

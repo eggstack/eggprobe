@@ -90,10 +90,19 @@ socket and reports local transmission separately from reply observation:
 ## Direct traceroute evidence
 
 `eggprobe trace <target> [--max-hops <1-64>] [--attempts <1-5>] --json`
-traces a bounded direct path with unprivileged UDP probes (classic,
-single-flow strategy; no raw sockets, no subprocess, no terminal parsing):
+traces a bounded direct path with UDP probes (classic, single-flow
+strategy; no subprocess, no terminal parsing):
 
 - one probe per TTL per round, at most 64 hops and 5 attempts per hop;
+- privilege follows the tracing backend's documented platform support
+  (Trippy 0.13): macOS traces unprivileged; Linux requires already-effective
+  `CAP_NET_RAW` (root, file capabilities, or an ambient set — Eggprobe never
+  invokes `sudo`, changes file capabilities, or prompts for elevation) and
+  Windows requires an already elevated process;
+- where required privilege is unavailable the trace fails fast with typed
+  `permission_denied` at stage `hop_probe` and the fixed message
+  `UDP trace requires additional local privilege` — never a silent hop, a
+  destination timeout, or a generic I/O failure;
 - every sent probe yields ordered per-attempt evidence: responder address,
   round-trip time, and outcome (`destination_reached`, `time_exceeded`,
   `reply`, `destination_unreachable`, or `timed_out`);
@@ -161,7 +170,8 @@ qualifies its backend:
   connected sockets, bounded payload/reply, transmit/reply/timeout/
   unreachable semantics);
 - traceroute / path tracing — `M005`, implemented (`eggprobe trace`,
-  unprivileged UDP, ordered per-attempt evidence, explicit termination);
+  platform-aware UDP privilege mode, ordered per-attempt evidence, explicit
+  termination);
 - active path-MTU discovery — `M006`, blocked on test seams and
   trustworthy PMTU feedback.
 
