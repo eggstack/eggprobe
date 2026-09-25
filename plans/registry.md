@@ -57,6 +57,18 @@ C004 implementation/closure head:
 
 `04c84d3e4721707839fe286b6c94ecfdd568eac0`
 
+Native corrective C004 planning baseline:
+
+`f82eb8b30e65e003fc95520e37a338f9e80a002c`
+
+Native corrective C004 tested upstream commit:
+
+`040771431b6e0b3f66bb17629636c8a3b4956b45`
+
+Native corrective C004 closure:
+
+`plans/closure/native-path-host-diagnostics-corrective/004-status.md`
+
 C004 qualifying hosted run `36015806725` (Ubuntu `107687917563`, macOS
 `107687917768`, Windows `107687917787`, MSRV `107687917366`, audit
 `107687917580`) is fully green with no production change. Closure:
@@ -96,7 +108,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Release/packaging | active | M004 closed (first standalone release qualified as 0.1.1); C001–C006 closed; M002 operationally qualified | `plans/subsystems/release-operational-qualification-roadmap.md` |
 | Eggpack producer adoption | deferred | M003a blocked on selected closure-backed Eggpack producer interfaces | ADR-0002 + M003a |
 | Eggup runtime self-update | deferred/optional | M003b blocked on manifest interop/consumer adapter + product decision | ADR-0002 + M003b |
-| Native path/host diagnostics | active | M001/M002 closed; C002 corrective required; C004 ICMP semantic/durable-handoff corrective ready; C003/M003 blocked behind C004 + publication; M004 ready; M005/M006 blocked | `plans/subsystems/native-path-host-diagnostics-roadmap.md` |
+| Native path/host diagnostics | active | M001/M002 closed; C002 corrective required; C004 ICMP semantic/durable-handoff corrective closed at tested upstream commit `0407714` with PR #9; C003/M003 blocked behind upstream acceptance/merge + publication; M004 ready; M005/M006 blocked | `plans/subsystems/native-path-host-diagnostics-roadmap.md` |
 | QUIC/H3 expansion | roadmap-level | routed datagram composition remains separate from Phase 8 | Phase 9 prerequisites unresolved |
 
 ## Dependency-ready work
@@ -109,7 +121,7 @@ post-closure findings have been handled by the registered corrective sequence.
 | Native path/host diagnostics | M002 target route/interface/egress MTU | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | Target-scoped route/interface/source/MTU evidence closed; `plans/closure/native-path-host-diagnostics/002-status.md` |
 | Native path/host diagnostics corrective | C001 planning/documentation and execution realignment | closed | `plans/implementation/native-path-host-diagnostics-corrective/001-planning-documentation-and-execution-realignment.md` | Documentation/planning-only corrective; closure `plans/closure/native-path-host-diagnostics-corrective/001-status.md`. M004 now independently ready after C001; M003 continues as parallel blocked research line. |
 | Native path/host diagnostics corrective | C002 ping-async upstream ICMP contract enablement | corrective required | `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md` | Historical prototype/closure preserved; C004 corrects incomplete exact-payload semantics, responder plumbing, and non-durable `/tmp` handoff evidence. |
-| Native path/host diagnostics corrective | C004 complete ICMP semantics and durable upstream handoff | ready | `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md` | Current authority for the unfinished upstream work; must close before C003 can qualify a publication. |
+| Native path/host diagnostics corrective | C004 complete ICMP semantics and durable upstream handoff | closed | `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md` | Tested upstream commit `0407714`; durable fork branch and upstream PR #9; closure `plans/closure/native-path-host-diagnostics-corrective/004-status.md`. C003 still requires upstream acceptance/merge and crates.io publication. |
 | Native path/host diagnostics | M004 direct UDP service diagnostics | ready | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | M001/M002 are closed; direct UDP is independent of M003 ICMP research after M001 (see native roadmap §6) |
 
 ## Release evidence gate
@@ -154,7 +166,7 @@ and remain historical evidence.
 | Eggpack producer adoption | M003a | blocked/deferred | `plans/implementation/release-operational-qualification/003a-eggpack-producer-release-integration.md` | Current Eggpack HEAD `154d4a2` still has Manifest M002, Build/Qualification M001, and Bootstrap M001 ready but not closed; selected interfaces must be closure-backed |
 | Eggup runtime self-update | M003b | blocked/deferred | `plans/implementation/release-operational-qualification/003b-eggup-runtime-self-update-integration.md` | Current Eggpack HEAD `154d4a2` has interop M001 ready but not closed; Eggup HEAD `8937ad0` still gates adapter implementation on that closure; product decision also required |
 | Release qualification | M004 | closed | `plans/implementation/release-operational-qualification/004-release-qualification-and-operator-docs.md` | First standalone release qualified as `0.1.1` (tag `v0.1.1` at `53ea53d`, hosted packaging run `36041400748`); closure `plans/closure/release-operational-qualification/004-status.md` |
-| Native diagnostics corrective | C003 published ICMP backend adoption qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | C004 closure plus upstream acceptance/merge and a crates.io release containing the C004-qualified surface |
+| Native diagnostics corrective | C003 published ICMP backend adoption qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | C004 closed; still requires upstream acceptance/merge and a crates.io release containing tested commit `0407714` or an explicitly reconciled equivalent |
 | Native diagnostics | M003 ICMP echo | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | C004 + C003 closure; consume only the published qualified backend, never a production Git pin |
 | Native diagnostics | M005 traceroute/path | blocked | `plans/implementation/native-path-host-diagnostics/005-traceroute-path-diagnostics.md` | `tracert` 0.12.0 omits silent attempts, deduplicates responders, reverse-resolves by default, and adds a second `netdev` line |
 | Native diagnostics | M006 active PMTU | blocked | `plans/implementation/native-path-host-diagnostics/006-active-path-mtu-discovery.md` | M004/M005 support seams remain open; trustworthy platform PMTU controls unqualified |
@@ -220,8 +232,8 @@ A standalone Eggprobe archive release may qualify before M003a or M003b.
 10. ~~Execute **Native corrective C001** before the next capability handoff~~ — closed; planning/docs/release-identity/M003↔M004 sequencing realigned; closure `plans/closure/native-path-host-diagnostics-corrective/001-status.md`.
 11. **Native M004** may execute independently now.
 12. Treat historical **Native corrective C002** as **corrective required**: its prototype/API direction is useful, but exact 0..7-byte wire payload semantics, real responder plumbing, and durable remote handoff evidence were not complete.
-13. Execute **Native corrective C004** now to complete those semantics and push/open a durable upstream branch or PR.
-14. After C004 closes, wait for upstream acceptance/merge and an immutable crates.io release containing the C004-qualified interface, then execute **Native corrective C003**.
+13. ~~Execute **Native corrective C004**~~ — closed: tested upstream commit `0407714`, durable fork branch, PR #9, and closure `plans/closure/native-path-host-diagnostics-corrective/004-status.md`.
+14. Wait for upstream acceptance/merge and an immutable crates.io release containing the C004-qualified interface, then execute **Native corrective C003**.
 15. Execute **Native M003** only after C003 closes; consume the published qualified backend rather than a Git SHA/fork.
 16. Keep M005 blocked for now; use C004 evidence to decide whether the same upstream ICMP surface can replace the rejected `tracert` path without losing silent-attempt/responder truth.
 17. Execute M006 only after the route/UDP/path test seams it depends on are closure-backed and trustworthy PMTU feedback is available.

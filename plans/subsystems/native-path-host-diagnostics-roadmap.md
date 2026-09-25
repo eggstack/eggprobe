@@ -224,11 +224,13 @@ Later review found that C002 over-closed the upstream implementation leg: short 
 
 ### C004 — Complete ICMP semantics and durable upstream handoff
 
-Status: ready.
+Status: closed.
 
 Plan: `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md`
 
-C004 must finish exact 0..=1024 on-wire payload semantics without weakening reply correlation, wire truthful responder identity on Unix/Linux/Windows where available, retain structured Time Exceeded versus local timeout semantics, and preserve the exact tested work in a durable fork branch or upstream PR. C003 cannot become ready until C004 closes.
+Closure: `plans/closure/native-path-host-diagnostics-corrective/004-status.md`.
+
+C004 completed exact 0..=1024 on-wire payload semantics without weakening reply or ICMP-error correlation, wired truthful responder identity on Unix/Linux/Windows where available, retained structured Time Exceeded versus local timeout semantics, and preserved the tested commit in durable fork branch `eggprobe/c004-icmp-semantics-and-durable-handoff` at `040771431b6e0b3f66bb17629636c8a3b4956b45` with upstream PR https://github.com/hankbao/ping-async/pull/9. C003 remains blocked on upstream acceptance/merge and publication of the qualified surface.
 
 
 ### C003 — Published ICMP backend adoption qualification
@@ -252,7 +254,7 @@ Routed UDP/QUIC and whole-host inventory are not Phase 8 closure requirements.
 | M001 native contract/platform substrate | closed | `plans/implementation/native-path-host-diagnostics/001-native-contract-and-platform-substrate.md` | `plans/closure/native-path-host-diagnostics/001-status.md` | — |
 | M002 target route/interface/MTU evidence | closed | `plans/implementation/native-path-host-diagnostics/002-target-route-interface-and-egress-mtu.md` | `plans/closure/native-path-host-diagnostics/002-status.md` | — |
 | C002 ping-async upstream ICMP enablement | corrective required | `plans/implementation/native-path-host-diagnostics-corrective/002-ping-async-upstream-icmp-contract-enablement.md` | historical: `plans/closure/native-path-host-diagnostics-corrective/002-status.md` | Corrected by C004 |
-| C004 complete ICMP semantics/durable handoff | ready | `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md` | pending | — |
+| C004 complete ICMP semantics/durable handoff | closed | `plans/implementation/native-path-host-diagnostics-corrective/004-complete-icmp-semantics-and-durable-upstream-handoff.md` | `plans/closure/native-path-host-diagnostics-corrective/004-status.md` | PR open; C003 waits on upstream acceptance/merge and crates.io publication |
 | C003 published ICMP backend qualification | blocked | `plans/implementation/native-path-host-diagnostics-corrective/003-published-icmp-backend-adoption-qualification.md` | pending | C004 closure + upstream acceptance/merge + published crates.io release |
 | M003 ICMP echo diagnostics | blocked | `plans/implementation/native-path-host-diagnostics/003-icmp-echo-diagnostics.md` | pending | C004 + C003 closure |
 | M004 direct UDP service diagnostics | ready (parallel to M003 after M001) | `plans/implementation/native-path-host-diagnostics/004-direct-udp-service-diagnostics.md` | pending | M001 closed; M002 source/interface seam closed; not held behind M003 |

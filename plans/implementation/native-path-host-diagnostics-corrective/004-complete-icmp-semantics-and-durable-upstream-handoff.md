@@ -1,8 +1,10 @@
 # Native Path/Host Diagnostics Corrective C004 — Complete ICMP Semantics and Durable Upstream Handoff
 
-Status: ready
+Status: closed
 
 Repository baseline: `f82eb8b30e65e003fc95520e37a338f9e80a002c`
+
+Closure: `plans/closure/native-path-host-diagnostics-corrective/004-status.md`
 
 Source roadmap:
 
